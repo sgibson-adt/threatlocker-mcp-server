@@ -41,6 +41,10 @@ describe('ENUMS', () => {
     expect(ENUMS.maintenanceTypeIds[19]).toBe('InstallationLegacy');
   });
 
+  it('osTypes maps 7 to the full Red Hat Enterprise Linux 6 label', () => {
+    expect(ENUMS.osTypes[7]).toBe('Red Hat Enterprise Linux 6');
+  });
+
   // Drift guard: the action_log actionId schema must accept every canonical action id
   // so a tool-level enum can't silently drop values (as it did for 3 and 6).
   it('action_log actionId schema accepts every ENUMS.actionIds value', () => {

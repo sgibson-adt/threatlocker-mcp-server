@@ -54,11 +54,11 @@ export const networkAccessPoliciesZodSchema = {
 const networkAccessPolicyObject = z.object({
   networkAccessPolicyId: z.string(),
   name: z.string(),
-  policyActionId: z.number(),
+  policyActionId: z.number().describe('1=Permit, 2=Deny'),
   isEnabled: z.boolean(),
   organizationId: z.string(),
   osType: z.number(),
-  direction: z.number(),
+  direction: z.number().describe('1=Inbound, 2=Outbound'),
 }).passthrough();
 
 export const networkAccessPoliciesOutputZodSchema = {

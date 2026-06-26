@@ -47,7 +47,28 @@ describe('reports tool', () => {
     await handleReportsTool(mockClient, { action: 'get_data', reportId: 'a7b8c9d0-e1f2-3456-abcd-567890123456' });
     expect(mockClient.post).toHaveBeenCalledWith(
       'Report/ReportGetDynamicData',
-      { reportId: 'a7b8c9d0-e1f2-3456-abcd-567890123456' }
+      expect.objectContaining({ reportId: 'a7b8c9d0-e1f2-3456-abcd-567890123456' })
+    );
+  });
+
+  it('passes date window and timezone options to get_data', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: {} });
+    await handleReportsTool(mockClient, {
+      action: 'get_data',
+      reportId: 'a7b8c9d0-e1f2-3456-abcd-567890123456',
+      startDate: '2025-01-01T00:00:00Z',
+      endDate: '2025-01-31T23:59:59Z',
+      includeChildOrganizations: true,
+      offsetInMinutes: -300,
+    });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'Report/ReportGetDynamicData',
+      expect.objectContaining({
+        startDate: '2025-01-01T00:00:00Z',
+        endDate: '2025-01-31T23:59:59Z',
+        includeChildOrganizations: true,
+        offsetInMinutes: -300,
+      }),
     );
   });
 });

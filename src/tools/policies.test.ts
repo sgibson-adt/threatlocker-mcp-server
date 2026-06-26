@@ -164,6 +164,31 @@ describe('policies tool', () => {
       if (!result.success) expect(result.error.message).toContain('must be a valid GUID');
     });
 
+    it('passes monitorMode, orderBefore, elevationEndDate and description scalars to PolicyInsert', async () => {
+      vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: { policyId: 'new-id' } });
+      await handlePoliciesTool(mockClient, {
+        action: 'create',
+        name: 'Explicit Deny',
+        applicationIds: ['12345678-1234-1234-1234-123456789abc'],
+        computerGroupId: '23456789-2345-2345-2345-23456789abcd',
+        osType: 1,
+        policyActionId: 2,
+        monitorMode: 1,
+        orderBefore: true,
+        elevationEndDate: '2025-02-01T00:00:00Z',
+        description: 'block it',
+      });
+      expect(mockClient.post).toHaveBeenCalledWith(
+        'Policy/PolicyInsert',
+        expect.objectContaining({
+          monitorMode: 1,
+          orderBefore: true,
+          elevationEndDate: '2025-02-01T00:00:00Z',
+          description: 'block it',
+        }),
+      );
+    });
+
     it('calls PolicyInsert with correct body', async () => {
       vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: { policyId: 'new-id' } });
       await handlePoliciesTool(mockClient, {

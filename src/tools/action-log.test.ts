@@ -86,7 +86,7 @@ describe('action_log tool', () => {
     await handleActionLogTool(mockClient, { action: 'get', actionLogId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' });
     expect(mockClient.get).toHaveBeenCalledWith(
       'ActionLog/ActionLogGetByIdV2',
-      { eActionLogId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', sourceTableId: '2' }
+      { eActionLogId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', sourceTableId: '2', getAllParents: 'false' }
     );
   });
 
@@ -100,7 +100,7 @@ describe('action_log tool', () => {
     await handleActionLogTool(mockClient, { action: 'file_history', fullPath: 'C:\\test.exe' });
     expect(mockClient.get).toHaveBeenCalledWith(
       'ActionLog/ActionLogGetAllForFileHistoryV2',
-      { fullPath: 'C:\\test.exe' }
+      { fullPath: 'C:\\test.exe', pageNumber: '1', pageSize: '25' }
     );
   });
 
@@ -305,6 +305,77 @@ describe('action_log tool', () => {
     expect(actionLogZodSchema.actionId.safeParse(6).success).toBe(true);
     expect(actionLogZodSchema.actionId.safeParse(1).success).toBe(true);
     expect(actionLogZodSchema.actionId.safeParse(99).success).toBe(true);
+  });
+
+  // Enrichment: policyId, actionTypes[], showKnownThreatsOnly are top-level filters
+  // validated live to actually narrow results (unlike username/deviceType/filter,
+  // which the V2 endpoint silently ignores and were deliberately NOT added).
+  it('passes policyId, actionTypes and showKnownThreatsOnly to the search body', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handleActionLogTool(mockClient, {
+      action: 'search',
+      startDate: '2025-01-01T00:00:00Z',
+      endDate: '2025-01-31T23:59:59Z',
+      policyId: '513da990-ce30-4900-b00a-ec23e043735c',
+      actionTypes: ['execute', 'network'],
+      showKnownThreatsOnly: true,
+    });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ActionLog/ActionLogGetByParametersV2',
+      expect.objectContaining({
+        policyId: '513da990-ce30-4900-b00a-ec23e043735c',
+        actionTypes: ['execute', 'network'],
+        showKnownThreatsOnly: true,
+      }),
+      expect.any(Function),
+      { usenewsearch: 'true' }
+    );
+  });
+
+  it('rejects an invalid policyId GUID in search', async () => {
+    const result = await handleActionLogTool(mockClient, {
+      action: 'search',
+      startDate: '2025-01-01T00:00:00Z',
+      endDate: '2025-01-31T23:59:59Z',
+      policyId: 'not-a-guid',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.message).toContain('policyId must be a valid GUID');
+    }
+  });
+
+  it('caps groupBys at 2 (API maximum)', () => {
+    expect(actionLogZodSchema.groupBys.safeParse([1, 2]).success).toBe(true);
+    expect(actionLogZodSchema.groupBys.safeParse([1, 2, 6]).success).toBe(false);
+  });
+
+  it('passes getAllParents through to the get endpoint', async () => {
+    vi.mocked(mockClient.get).mockResolvedValue({ success: true, data: {} });
+    await handleActionLogTool(mockClient, {
+      action: 'get',
+      actionLogId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      getAllParents: true,
+    });
+    expect(mockClient.get).toHaveBeenCalledWith(
+      'ActionLog/ActionLogGetByIdV2',
+      expect.objectContaining({ getAllParents: 'true' })
+    );
+  });
+
+  it('passes hostname and paging to file_history', async () => {
+    vi.mocked(mockClient.get).mockResolvedValue({ success: true, data: [] });
+    await handleActionLogTool(mockClient, {
+      action: 'file_history',
+      fullPath: 'C:\\test.exe',
+      hostname: 'WS-01',
+      pageNumber: 2,
+      pageSize: 50,
+    });
+    expect(mockClient.get).toHaveBeenCalledWith(
+      'ActionLog/ActionLogGetAllForFileHistoryV2',
+      expect.objectContaining({ fullPath: 'C:\\test.exe', hostname: 'WS-01', pageNumber: '2', pageSize: '50' })
+    );
   });
 
   it('passes through client error for search action', async () => {

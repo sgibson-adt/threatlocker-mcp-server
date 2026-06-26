@@ -9,15 +9,19 @@ export async function handleOnlineDevicesTool(
   client: ThreatLockerClient,
   input: Record<string, unknown>
 ): Promise<ApiResponse<unknown>> {
-  const { action } = input as ToolInput;
+  const { action, orderBy, isAscending } = input as ToolInput;
   const { pageNumber, pageSize } = clampPagination(input.pageNumber as number | undefined, input.pageSize as number | undefined);
 
   switch (action) {
-    case 'list':
-      return client.get('OnlineDevices/OnlineDevicesGetByParameters', {
+    case 'list': {
+      const params: Record<string, string> = {
         pageNumber: String(pageNumber),
         pageSize: String(pageSize),
-      });
+      };
+      if (orderBy) params.orderBy = orderBy;
+      if (isAscending !== undefined) params.isAscending = String(isAscending);
+      return client.get('OnlineDevices/OnlineDevicesGetByParameters', params);
+    }
 
     default:
       return errorResponse('BAD_REQUEST', `Unknown action: ${action}`);
@@ -26,6 +30,8 @@ export async function handleOnlineDevicesTool(
 
 export const onlineDevicesZodSchema = {
   action: z.enum(['list']).describe('list=get currently online devices'),
+  orderBy: z.string().max(100).optional().describe('Field to sort by (e.g. lastcheckin)'),
+  isAscending: z.boolean().optional().describe('Sort ascending when true'),
   pageNumber: z.number().optional().describe('Page number (default: 1)'),
   pageSize: z.number().optional().describe('Results per page (default: 25, max: 500)'),
 };

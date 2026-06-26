@@ -15,6 +15,7 @@ export async function handleScheduledActionsTool(
     scheduledId,
     searchText = '',
     scheduledType = 1,
+    osType,
     includeChildren = false,
     organizationIds = [],
     computerGroupIds = [],
@@ -68,8 +69,12 @@ export async function handleScheduledActionsTool(
       return client.get('ScheduledAgentAction/GetForHydration', { scheduledActionId });
     }
 
-    case 'get_applies_to':
-      return client.get('ScheduledAgentAction/AppliesTo', {});
+    case 'get_applies_to': {
+      const params: Record<string, string> = { includeChildren: String(includeChildren) };
+      if (osType !== undefined) params.osType = String(osType);
+      if (searchText) params.searchText = searchText;
+      return client.get('ScheduledAgentAction/AppliesTo', params);
+    }
 
     default:
       return errorResponse('BAD_REQUEST', `Unknown action: ${action}`);
@@ -81,8 +86,9 @@ export const scheduledActionsZodSchema = {
   scheduledActionId: z.string().max(100).optional().describe('Scheduled action GUID (required for get). Find via list or search first.'),
   scheduledId: z.string().max(100).optional().describe('Filter search to the computers within a specific scheduled action (GUID). Find via list first.'),
   searchText: z.string().max(1000).optional().describe('Free-text filter for search (e.g. computer name).'),
-  scheduledType: z.number().optional().describe('Scheduled type identifier (default: 1 for Version Update)'),
-  includeChildren: z.boolean().optional().describe('Include child organizations (list action only)'),
+  scheduledType: z.literal(1).optional().describe('Scheduled type: 1=Version Update (the only supported type). Default: 1.'),
+  osType: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(7)]).optional().describe('Filter get_applies_to targets by OS: 1=Windows, 2=Mac, 3=Linux, 7=Red Hat Enterprise Linux 6'),
+  includeChildren: z.boolean().optional().describe('Include child organizations (list and get_applies_to actions)'),
   organizationIds: z.array(z.string().max(100)).max(50).optional().describe('Filter by organization GUIDs. Find via organizations first.'),
   computerGroupIds: z.array(z.string().max(100)).max(50).optional().describe('Filter by computer group GUIDs. Find via computer_groups first.'),
   orderBy: z.enum(['scheduleddatetime', 'computername', 'computergroupname', 'organizationname']).optional().describe('Field to sort by'),

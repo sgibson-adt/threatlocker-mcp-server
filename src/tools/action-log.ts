@@ -15,13 +15,17 @@ export async function handleActionLogTool(
     endDate,
     actionId,
     actionType,
+    actionTypes,
     hostname,
     actionLogId,
     sourceTableId = 2,
     fullPath,
     computerId,
+    policyId,
     showChildOrganizations = false,
     onlyTrueDenies = false,
+    showKnownThreatsOnly = false,
+    getAllParents = false,
     groupBys = [],
     simulateDeny = false,
   } = input as ToolInput;
@@ -34,6 +38,10 @@ export async function handleActionLogTool(
       }
       const dateError = validateDateRange(startDate, endDate);
       if (dateError) return dateError;
+      if (policyId) {
+        const guidError = validateGuid(policyId, 'policyId');
+        if (guidError) return guidError;
+      }
 
       // True/simulated deny filtering only works when actionId=99 AND a MonitorOnly
       // filter object is pushed into paramsFieldsDto — sending the bare booleans alone
@@ -59,13 +67,16 @@ export async function handleActionLogTool(
           pageSize,
           actionId: effectiveActionId,
           actionType,
+          actionTypes,
           hostname,
           fullPath,
+          policyId,
           paramsFieldsDto,
           groupBys,
           exportMode: false,
           showTotalCount: true,
           showChildOrganizations,
+          showKnownThreatsOnly,
           onlyTrueDenies,
           simulateDeny,
         },
@@ -80,14 +91,19 @@ export async function handleActionLogTool(
       }
       const guidError = validateGuid(actionLogId, 'actionLogId');
       if (guidError) return guidError;
-      return client.get('ActionLog/ActionLogGetByIdV2', { eActionLogId: actionLogId, sourceTableId: String(sourceTableId) });
+      return client.get('ActionLog/ActionLogGetByIdV2', { eActionLogId: actionLogId, sourceTableId: String(sourceTableId), getAllParents: String(getAllParents) });
     }
 
     case 'file_history': {
       if (!fullPath) {
         return errorResponse('BAD_REQUEST', 'fullPath is required for file_history action');
       }
-      const params: Record<string, string> = { fullPath };
+      const params: Record<string, string> = {
+        fullPath,
+        pageNumber: String(pageNumber),
+        pageSize: String(pageSize),
+      };
+      if (hostname) params.hostname = hostname;
       if (computerId) {
         const guidError = validateGuid(computerId, 'computerId');
         if (guidError) return guidError;
@@ -133,15 +149,19 @@ export const actionLogZodSchema = {
   startDate: z.string().max(100).optional().describe('Start date for search (ISO 8601 UTC)'),
   endDate: z.string().max(100).optional().describe('End date for search (ISO 8601 UTC)'),
   actionId: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(6), z.literal(99)]).optional().describe('Filter by action: 1=Permit, 2=Deny, 3=Deny (Option to Request), 6=Ringfenced, 99=Any Deny'),
-  actionType: z.enum(['execute', 'install', 'network', 'registry', 'read', 'write', 'move', 'delete', 'baseline', 'powershell', 'elevate', 'configuration', 'dns']).optional().describe('Filter by action type'),
-  hostname: z.string().max(1000).optional().describe('Filter by hostname (wildcards supported)'),
+  actionType: z.enum(['execute', 'install', 'network', 'registry', 'read', 'write', 'move', 'delete', 'baseline', 'powershell', 'elevate', 'configuration', 'dns']).optional().describe('Filter by a single action type'),
+  actionTypes: z.array(z.enum(['execute', 'install', 'network', 'registry', 'read', 'write', 'move', 'delete', 'baseline', 'powershell', 'elevate', 'configuration', 'dns'])).max(13).optional().describe('Filter by multiple action types in one query'),
+  hostname: z.string().max(1000).optional().describe('Filter by hostname for search or file_history (wildcards supported)'),
   actionLogId: z.string().max(100).optional().describe('Action log GUID (required for get, get_file_download, get_policy_conditions, get_testing_details). Find via search action first.'),
-  sourceTableId: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).optional().describe('Source table for get/get_file_download: 1=ActionLog, 2=DenyActionLog (default), 3=BaselineActionLog, 4=EventLogActionLog'),
+  sourceTableId: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).optional().describe('Source table for get/get_file_download: 1=ActionLog, 2=DenyActionLog (default), 3=BaselineActionLog, 4=EventLogActionLog. Must match the source table of the row the eActionLogId came from.'),
   fullPath: z.string().max(1000).optional().describe('File path for search filter or file_history (wildcards supported)'),
   computerId: z.string().max(100).optional().describe('Computer GUID to scope file_history. Find via computers list first.'),
+  policyId: z.string().max(100).optional().describe('Filter search by the GUID of the policy that handled the event. Find via policies first.'),
   showChildOrganizations: z.boolean().optional().describe('Include child organization logs (default: false)'),
-  onlyTrueDenies: z.boolean().optional().describe('Exclude simulated denies from Monitor Only mode, show only real enforced blocks (default: false)'),
-  groupBys: z.array(z.number()).max(10).optional().describe('Group by: 1=Username, 2=Process Path, 6=Policy Name, 8=App Name, 9=Action Type, 17=Asset Name, 70=Risk Score'),
+  showKnownThreatsOnly: z.boolean().optional().describe('Restrict search to events flagged as known threats (default: false)'),
+  getAllParents: z.boolean().optional().describe('On get: include the full parent-process chain for the event (default: false)'),
+  onlyTrueDenies: z.boolean().optional().describe('Show only real enforced blocks, excluding simulated denies from Monitor Only mode (default: false)'),
+  groupBys: z.array(z.number()).max(2).optional().describe('Aggregate results by up to 2 fields. Common: 1=Username, 2=Process Path, 5=Policy Id, 6=Policy Name, 7=App Id, 8=App Name, 9=Action Type, 11=Hash, 17=Asset Name, 65=Computer Id, 70=Risk Score, 71=Risk State. See threatlocker://enums and the unified-audit KB for the full ~55-code list.'),
   pageNumber: z.number().optional().describe('Page number (default: 1)'),
   pageSize: z.number().optional().describe('Results per page (default: 25, max: 500)'),
   simulateDeny: z.boolean().optional().describe('Include what-if denies from Monitor Only mode computers (default: false)'),

@@ -51,6 +51,11 @@ const tagObject = z.object({
   tagId: z.string(),
   name: z.string(),
   tagType: z.number(),
+  tagItemsText: z.array(z.unknown()).optional().describe('Text/domain entries'),
+  tagItemsIPv4: z.array(z.unknown()).optional().describe('IPv4 entries'),
+  tagItemsIPv6: z.array(z.unknown()).optional().describe('IPv6 entries'),
+  tagItemsReadablePath: z.array(z.unknown()).optional().describe('Readable path entries'),
+  tagItemsWritablePath: z.array(z.unknown()).optional().describe('Writable path entries'),
 }).passthrough();
 
 const dropdownItem = z.object({

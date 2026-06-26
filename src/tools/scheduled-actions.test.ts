@@ -114,6 +114,15 @@ describe('scheduled_actions tool', () => {
   it('calls correct endpoint for get_applies_to action', async () => {
     vi.mocked(mockClient.get).mockResolvedValue({ success: true, data: [] });
     await handleScheduledActionsTool(mockClient, { action: 'get_applies_to' });
-    expect(mockClient.get).toHaveBeenCalledWith('ScheduledAgentAction/AppliesTo', {});
+    expect(mockClient.get).toHaveBeenCalledWith('ScheduledAgentAction/AppliesTo', expect.any(Object));
+  });
+
+  it('passes osType, includeChildren and searchText to get_applies_to', async () => {
+    vi.mocked(mockClient.get).mockResolvedValue({ success: true, data: [] });
+    await handleScheduledActionsTool(mockClient, { action: 'get_applies_to', osType: 1, includeChildren: true, searchText: 'eng' });
+    expect(mockClient.get).toHaveBeenCalledWith(
+      'ScheduledAgentAction/AppliesTo',
+      expect.objectContaining({ osType: '1', includeChildren: 'true', searchText: 'eng' })
+    );
   });
 });

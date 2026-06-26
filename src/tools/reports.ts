@@ -9,7 +9,7 @@ export async function handleReportsTool(
   client: ThreatLockerClient,
   input: Record<string, unknown>
 ): Promise<ApiResponse<unknown>> {
-  const { action, reportId } = input as ToolInput;
+  const { action, reportId, startDate, endDate, includeChildOrganizations = false, offsetInMinutes = 0 } = input as ToolInput;
 
   switch (action) {
     case 'list':
@@ -21,7 +21,13 @@ export async function handleReportsTool(
       }
       const guidError = validateGuid(reportId, 'reportId');
       if (guidError) return guidError;
-      return client.post('Report/ReportGetDynamicData', { reportId });
+      return client.post('Report/ReportGetDynamicData', {
+        reportId,
+        startDate,
+        endDate,
+        includeChildOrganizations,
+        offsetInMinutes,
+      });
     }
 
     default:
@@ -32,6 +38,10 @@ export async function handleReportsTool(
 export const reportsZodSchema = {
   action: z.enum(['list', 'get_data']).describe('list=show available reports, get_data=run report and get results'),
   reportId: z.string().max(100).optional().describe('Report GUID (required for get_data action). Find via list action first.'),
+  startDate: z.string().max(100).optional().describe('Start of the report window (ISO 8601 UTC). Omit to use the report default window.'),
+  endDate: z.string().max(100).optional().describe('End of the report window (ISO 8601 UTC).'),
+  includeChildOrganizations: z.boolean().optional().describe('Include child organizations in the report (default: false)'),
+  offsetInMinutes: z.number().optional().describe('Timezone offset in minutes for date bucketing (e.g. -300 for UTC-5). Default: 0 (UTC).'),
 };
 
 const reportCategoryObject = z.object({

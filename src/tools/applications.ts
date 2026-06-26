@@ -28,6 +28,7 @@ export async function handleApplicationsTool(
     cert,
     certSha,
     createdBy,
+    validCert = true,
   } = input as ToolInput;
   const { pageNumber, pageSize } = clampPagination(input.pageNumber as number | undefined, input.pageSize as number | undefined);
 
@@ -95,7 +96,7 @@ export async function handleApplicationsTool(
         path: path || '',
         processPath: processPath || '',
         sha256: hash || '',
-        certs: certSha || cert ? [{ sha: certSha || '', subject: cert || '', validCert: true }] : [],
+        certs: certSha || cert ? [{ sha: certSha || '', subject: cert || '', validCert }] : [],
         createdBys: createdBy ? [createdBy] : [],
       });
     }
@@ -324,6 +325,7 @@ export const applicationsZodSchema = {
   processPath: z.string().max(1000).optional().describe('Process path for match action'),
   cert: z.string().max(500).optional().describe('Certificate subject for match action'),
   certSha: z.string().max(500).optional().describe('Certificate SHA for match action'),
+  validCert: z.boolean().optional().describe('Whether the cert supplied for match is valid/trusted (default: true)'),
   createdBy: z.string().max(1000).optional().describe('Created by path for match action'),
   name: z.string().max(200).optional().describe('Application name (required for create, update)'),
   description: z.string().max(2000).optional().describe('Application description'),
@@ -371,6 +373,7 @@ export const applicationsOutputZodSchema = {
     applicationObject.describe('get/get_for_network_policy: single application'),
     researchObject.describe('research: ThreatLocker security analysis'),
     z.array(z.object({
+      applicationFileId: z.number().describe('ID needed to target this rule with remove_file'),
       fullPath: z.string(),
       hash: z.string(),
       cert: z.string(),

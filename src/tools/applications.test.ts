@@ -148,6 +148,18 @@ describe('applications tool', () => {
     );
   });
 
+  it('lets the caller control validCert on a match cert (defaults to true)', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handleApplicationsTool(mockClient, { action: 'match', cert: 'Some Vendor', osType: 1, validCert: false });
+    const body = vi.mocked(mockClient.post).mock.calls[0][1] as { certs: Array<{ validCert: boolean }> };
+    expect(body.certs[0].validCert).toBe(false);
+
+    vi.mocked(mockClient.post).mockClear();
+    await handleApplicationsTool(mockClient, { action: 'match', cert: 'Some Vendor', osType: 1 });
+    const body2 = vi.mocked(mockClient.post).mock.calls[0][1] as { certs: Array<{ validCert: boolean }> };
+    expect(body2.certs[0].validCert).toBe(true);
+  });
+
   it('returns error for invalid hash format in match', async () => {
     const result = await handleApplicationsTool(mockClient, {
       action: 'match',

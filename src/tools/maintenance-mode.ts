@@ -43,7 +43,7 @@ export const maintenanceModeZodSchema = {
 
 const maintenanceModeObject = z.object({
   maintenanceModeId: z.string(),
-  maintenanceTypeId: z.number().describe('1=MonitorOnly, 2=InstallationMode, 3=Learning, 4=Elevation, 6=TamperProtection, 14=Isolation, 15=Lockdown, and others — see threatlocker://enums resource'),
+  maintenanceTypeId: z.number().describe('1=ApplicationControlMonitorOnly, 2=ApplicationControlInstallationMode, 3=Learning, 4=Elevation, 6=TamperProtectionDisabled, 14=Isolation, 15=Lockdown, 16=DisableOpsAlerts, 17=NetworkControlMonitorOnly, 18=StorageControlMonitorOnly, 19=InstallationLegacy — see threatlocker://enums resource'),
   startDateTime: z.string(),
   endDateTime: z.string(),
   userName: z.string(),

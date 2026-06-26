@@ -42,6 +42,26 @@ describe('approval_requests tool', () => {
     );
   });
 
+  it('defaults list ordering to newest-first (isAscending=false)', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handleApprovalRequestsTool(mockClient, { action: 'list' });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ApprovalRequest/ApprovalRequestGetByParameters',
+      expect.objectContaining({ isAscending: false }),
+      expect.any(Function)
+    );
+  });
+
+  it('passes showCurrentTierOnly through to list', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handleApprovalRequestsTool(mockClient, { action: 'list', showCurrentTierOnly: true });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ApprovalRequest/ApprovalRequestGetByParameters',
+      expect.objectContaining({ showCurrentTierOnly: true }),
+      expect.any(Function)
+    );
+  });
+
   it('returns error for get without approvalRequestId', async () => {
     const result = await handleApprovalRequestsTool(mockClient, { action: 'get' });
     expect(result.success).toBe(false);
