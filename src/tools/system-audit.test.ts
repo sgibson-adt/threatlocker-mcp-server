@@ -49,11 +49,27 @@ describe('system_audit tool', () => {
       expect.objectContaining({
         startDate: '2025-01-01T00:00:00Z',
         endDate: '2025-01-31T23:59:59Z',
-        username: 'admin*',
+        emailAddress: 'admin*',
         action: 'Logon',
       }),
       expect.any(Function)
     );
+  });
+
+  // Regression: the username filter was sent under the body key `username`, which the
+  // API ignores — the recognized field is `emailAddress` (validated live: `username`
+  // filter returned unfiltered results, `emailAddress` filtered correctly).
+  it('maps the username input to the emailAddress body field, not username', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handleSystemAuditTool(mockClient, {
+      action: 'search',
+      startDate: '2025-01-01T00:00:00Z',
+      endDate: '2025-01-31T23:59:59Z',
+      username: 'admin@company.com',
+    });
+    const body = vi.mocked(mockClient.post).mock.calls[0][1] as Record<string, unknown>;
+    expect(body.emailAddress).toBe('admin@company.com');
+    expect(body).not.toHaveProperty('username');
   });
 
   it('returns error for invalid date format in search', async () => {

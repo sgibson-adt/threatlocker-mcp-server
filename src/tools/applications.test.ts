@@ -15,6 +15,11 @@ describe('applications tool', () => {
     } as unknown as ThreatLockerClient;
   });
 
+  // Exposes delete/delete_confirm actions, so clients must be able to gate it.
+  it('is annotated as destructive', () => {
+    expect(applicationsTool.annotations?.destructiveHint).toBe(true);
+  });
+
   it('has correct schema', () => {
     expect(applicationsTool.name).toBe('applications');
     expect(applicationsZodSchema.action.options).toContain('search');

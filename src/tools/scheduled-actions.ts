@@ -12,6 +12,8 @@ export async function handleScheduledActionsTool(
   const {
     action,
     scheduledActionId,
+    scheduledId,
+    searchText = '',
     scheduledType = 1,
     includeChildren = false,
     organizationIds = [],
@@ -29,6 +31,10 @@ export async function handleScheduledActionsTool(
       });
 
     case 'search': {
+      if (scheduledId) {
+        const guidError = validateGuid(scheduledId, 'scheduledId');
+        if (guidError) return guidError;
+      }
       for (const id of organizationIds) {
         const guidError = validateGuid(id, 'organizationIds item');
         if (guidError) return guidError;
@@ -40,6 +46,8 @@ export async function handleScheduledActionsTool(
       return client.post(
         'ScheduledAgentAction/GetByParameters',
         {
+          scheduledId,
+          searchText,
           orderBy,
           isAscending,
           pageSize,
@@ -71,12 +79,14 @@ export async function handleScheduledActionsTool(
 export const scheduledActionsZodSchema = {
   action: z.enum(['list', 'search', 'get', 'get_applies_to']).describe('list=all scheduled actions, search=filtered search, get=single action details, get_applies_to=available scheduling targets'),
   scheduledActionId: z.string().max(100).optional().describe('Scheduled action GUID (required for get). Find via list or search first.'),
+  scheduledId: z.string().max(100).optional().describe('Filter search to the computers within a specific scheduled action (GUID). Find via list first.'),
+  searchText: z.string().max(1000).optional().describe('Free-text filter for search (e.g. computer name).'),
   scheduledType: z.number().optional().describe('Scheduled type identifier (default: 1 for Version Update)'),
   includeChildren: z.boolean().optional().describe('Include child organizations (list action only)'),
   organizationIds: z.array(z.string().max(100)).max(50).optional().describe('Filter by organization GUIDs. Find via organizations first.'),
   computerGroupIds: z.array(z.string().max(100)).max(50).optional().describe('Filter by computer group GUIDs. Find via computer_groups first.'),
   orderBy: z.enum(['scheduleddatetime', 'computername', 'computergroupname', 'organizationname']).optional().describe('Field to sort by'),
-  isAscending: z.boolean().optional().describe('Sort ascending (default: true)'),
+  isAscending: z.boolean().optional().describe('Sort order. Note: the API inverts this — true (or omitted) returns results in descending order (high to low); set false for ascending. Default: true.'),
   pageNumber: z.number().optional().describe('Page number (default: 1)'),
   pageSize: z.number().optional().describe('Results per page (default: 25, max: 500)'),
 };

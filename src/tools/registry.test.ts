@@ -38,7 +38,9 @@ describe('tool registry', () => {
       // annotations must include all four hints
       expect(t.annotations).toBeDefined();
       expect(typeof t.annotations!.readOnlyHint).toBe('boolean');
-      expect(t.annotations!.destructiveHint).toBe(false);
+      // destructiveHint must be a boolean; write tools (applications, policies) set it
+      // true — see their dedicated tests. It is not universally false.
+      expect(typeof t.annotations!.destructiveHint).toBe('boolean');
       expect(typeof t.annotations!.idempotentHint).toBe('boolean');
       expect(t.annotations!.openWorldHint).toBe(true);
     }

@@ -15,6 +15,11 @@ describe('policies tool', () => {
     } as unknown as ThreatLockerClient;
   });
 
+  // Exposes a delete action, so clients must be able to gate it.
+  it('is annotated as destructive', () => {
+    expect(policiesTool.annotations?.destructiveHint).toBe(true);
+  });
+
   it('has correct schema', () => {
     expect(policiesTool.name).toBe('policies');
     expect(policiesZodSchema.action.options).toContain('get');

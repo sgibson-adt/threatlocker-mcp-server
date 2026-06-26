@@ -20,7 +20,6 @@ export const ENUMS = {
     3: 'Learning',
     4: 'Elevation',
     6: 'TamperProtectionDisabled',
-    8: 'Installation Mode (legacy)',
     14: 'Isolation',
     15: 'Lockdown',
     16: 'DisableOpsAlerts',

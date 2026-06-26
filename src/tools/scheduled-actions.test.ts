@@ -56,6 +56,35 @@ describe('scheduled_actions tool', () => {
     );
   });
 
+  it('passes scheduledId and searchText to search body when provided', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handleScheduledActionsTool(mockClient, {
+      action: 'search',
+      scheduledId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      searchText: 'WORKSTATION-01',
+    });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ScheduledAgentAction/GetByParameters',
+      expect.objectContaining({
+        scheduledId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        searchText: 'WORKSTATION-01',
+      }),
+      expect.any(Function)
+    );
+  });
+
+  it('returns error for invalid scheduledId in search', async () => {
+    const result = await handleScheduledActionsTool(mockClient, {
+      action: 'search',
+      scheduledId: 'not-a-valid-guid',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('BAD_REQUEST');
+      expect(result.error.message).toContain('scheduledId must be a valid GUID');
+    }
+  });
+
   it('returns error for get without scheduledActionId', async () => {
     const result = await handleScheduledActionsTool(mockClient, { action: 'get' });
     expect(result.success).toBe(false);

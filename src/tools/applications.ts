@@ -412,7 +412,7 @@ Pagination: search and files actions are paginated (use fetchAllPages=true to au
 Key response fields: applicationId, name, osType, computerCount, policyCount. Research fields: concernRating, reviewRating, categories, countriesWhereCodeCompiled.
 
 Related tools: policies (see policies using this app), action_log (see app activity), approval_requests (pending approvals for this app)`,
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   zodSchema: applicationsZodSchema,
   outputZodSchema: applicationsOutputZodSchema,
   handler: handleApplicationsTool,

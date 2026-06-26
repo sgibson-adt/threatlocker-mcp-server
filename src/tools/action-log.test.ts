@@ -237,6 +237,76 @@ describe('action_log tool', () => {
     }
   });
 
+  // Regression: onlyTrueDenies was sent as a bare boolean and silently no-op'd.
+  // The API only filters true denies when actionId=99 AND a MonitorOnly=false
+  // filter object is pushed into paramsFieldsDto (validated live: 500 rows
+  // unfiltered vs 218 filtered).
+  it('onlyTrueDenies forces actionId=99 and injects MonitorOnly=false filter', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handleActionLogTool(mockClient, {
+      action: 'search',
+      startDate: '2025-01-01T00:00:00Z',
+      endDate: '2025-01-31T23:59:59Z',
+      onlyTrueDenies: true,
+    });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ActionLog/ActionLogGetByParametersV2',
+      expect.objectContaining({
+        actionId: 99,
+        paramsFieldsDto: expect.arrayContaining([
+          { fieldAttributeId: 34, fieldType: 1, filterType: 1, name: 'MonitorOnly', value: 'false' },
+        ]),
+      }),
+      expect.any(Function),
+      { usenewsearch: 'true' }
+    );
+  });
+
+  it('simulateDeny forces actionId=99 and injects MonitorOnly=true filter', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handleActionLogTool(mockClient, {
+      action: 'search',
+      startDate: '2025-01-01T00:00:00Z',
+      endDate: '2025-01-31T23:59:59Z',
+      simulateDeny: true,
+    });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ActionLog/ActionLogGetByParametersV2',
+      expect.objectContaining({
+        actionId: 99,
+        paramsFieldsDto: expect.arrayContaining([
+          { fieldAttributeId: 34, fieldType: 1, filterType: 1, name: 'MonitorOnly', value: 'true' },
+        ]),
+      }),
+      expect.any(Function),
+      { usenewsearch: 'true' }
+    );
+  });
+
+  it('leaves paramsFieldsDto empty and does not override actionId when no deny filter set', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handleActionLogTool(mockClient, {
+      action: 'search',
+      startDate: '2025-01-01T00:00:00Z',
+      endDate: '2025-01-31T23:59:59Z',
+      actionId: 2,
+    });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ActionLog/ActionLogGetByParametersV2',
+      expect.objectContaining({ actionId: 2, paramsFieldsDto: [] }),
+      expect.any(Function),
+      { usenewsearch: 'true' }
+    );
+  });
+
+  // Regression: actionId union dropped 3 (Deny Option to Request) and 6 (Ringfenced).
+  it('actionId schema accepts Deny-Option-to-Request (3) and Ringfenced (6)', () => {
+    expect(actionLogZodSchema.actionId.safeParse(3).success).toBe(true);
+    expect(actionLogZodSchema.actionId.safeParse(6).success).toBe(true);
+    expect(actionLogZodSchema.actionId.safeParse(1).success).toBe(true);
+    expect(actionLogZodSchema.actionId.safeParse(99).success).toBe(true);
+  });
+
   it('passes through client error for search action', async () => {
     const apiError = { success: false as const, error: { code: 'FORBIDDEN' as const, message: 'No permission', statusCode: 403 } };
     vi.mocked(mockClient.post).mockResolvedValue(apiError);

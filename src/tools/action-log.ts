@@ -34,6 +34,22 @@ export async function handleActionLogTool(
       }
       const dateError = validateDateRange(startDate, endDate);
       if (dateError) return dateError;
+
+      // True/simulated deny filtering only works when actionId=99 AND a MonitorOnly
+      // filter object is pushed into paramsFieldsDto — sending the bare booleans alone
+      // is silently ignored by the API (validated live: unfiltered 500 vs filtered 218).
+      // MonitorOnly=false → enforced ("true") denies; MonitorOnly=true → simulated denies.
+      const paramsFieldsDto: Array<Record<string, unknown>> = [];
+      let effectiveActionId = actionId;
+      if (onlyTrueDenies) {
+        effectiveActionId = 99;
+        paramsFieldsDto.push({ fieldAttributeId: 34, fieldType: 1, filterType: 1, name: 'MonitorOnly', value: 'false' });
+      }
+      if (simulateDeny) {
+        effectiveActionId = 99;
+        paramsFieldsDto.push({ fieldAttributeId: 34, fieldType: 1, filterType: 1, name: 'MonitorOnly', value: 'true' });
+      }
+
       return client.post(
         'ActionLog/ActionLogGetByParametersV2',
         {
@@ -41,11 +57,11 @@ export async function handleActionLogTool(
           endDate,
           pageNumber,
           pageSize,
-          actionId,
+          actionId: effectiveActionId,
           actionType,
           hostname,
           fullPath,
-          paramsFieldsDto: [],
+          paramsFieldsDto,
           groupBys,
           exportMode: false,
           showTotalCount: true,
@@ -116,7 +132,7 @@ export const actionLogZodSchema = {
   action: z.enum(['search', 'get', 'file_history', 'get_file_download', 'get_policy_conditions', 'get_testing_details']).describe('search=query logs with filters, get=single event details, file_history=all events for a file path, get_file_download=file download info, get_policy_conditions=policy conditions for permit, get_testing_details=testing environment details'),
   startDate: z.string().max(100).optional().describe('Start date for search (ISO 8601 UTC)'),
   endDate: z.string().max(100).optional().describe('End date for search (ISO 8601 UTC)'),
-  actionId: z.union([z.literal(1), z.literal(2), z.literal(99)]).optional().describe('Filter by action: 1=Permit, 2=Deny, 99=Any Deny'),
+  actionId: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(6), z.literal(99)]).optional().describe('Filter by action: 1=Permit, 2=Deny, 3=Deny (Option to Request), 6=Ringfenced, 99=Any Deny'),
   actionType: z.enum(['execute', 'install', 'network', 'registry', 'read', 'write', 'move', 'delete', 'baseline', 'powershell', 'elevate', 'configuration', 'dns']).optional().describe('Filter by action type'),
   hostname: z.string().max(1000).optional().describe('Filter by hostname (wildcards supported)'),
   actionLogId: z.string().max(100).optional().describe('Action log GUID (required for get, get_file_download, get_policy_conditions, get_testing_details). Find via search action first.'),

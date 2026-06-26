@@ -275,7 +275,7 @@ Pagination: list_by_application is paginated (use fetchAllPages=true to auto-fet
 Key response fields: policyId, name, policyActionId, applicationId, computerGroupId, isEnabled.
 
 Related tools: applications (what the policy permits), computer_groups (where policy applies), action_log (see policy enforcement)`,
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   zodSchema: policiesZodSchema,
   outputZodSchema: policiesOutputZodSchema,
   handler: handlePoliciesTool,

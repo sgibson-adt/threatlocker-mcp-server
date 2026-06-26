@@ -43,7 +43,8 @@ export async function handleSystemAuditTool(
           endDate,
           pageSize,
           pageNumber,
-          username,
+          // API recognizes `emailAddress`, not `username`; the latter is silently ignored.
+          emailAddress: username,
           action: auditAction,
           ipAddress,
           effectiveAction,
@@ -79,7 +80,7 @@ export const systemAuditZodSchema = {
   action: z.enum(['search', 'health_center']).describe('search=query audit logs with filters, health_center=health dashboard data'),
   startDate: z.string().max(100).optional().describe('Start date (ISO 8601 UTC)'),
   endDate: z.string().max(100).optional().describe('End date (ISO 8601 UTC)'),
-  username: z.string().max(500).optional().describe('Filter by username (wildcards supported)'),
+  username: z.string().max(500).optional().describe('Filter by admin email address (maps to the API emailAddress field; wildcards supported)'),
   auditAction: z.enum(['Create', 'Delete', 'Logon', 'Modify', 'Read']).optional().describe('Filter by audit action type'),
   ipAddress: z.string().max(500).optional().describe('Filter by IP address'),
   effectiveAction: z.enum(['Denied', 'Permitted']).optional().describe('Filter by effective action'),
