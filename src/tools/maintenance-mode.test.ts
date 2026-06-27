@@ -10,12 +10,65 @@ describe('maintenance_mode tool', () => {
   beforeEach(() => {
     mockClient = {
       get: vi.fn(),
+      post: vi.fn(),
+      patch: vi.fn(),
     } as unknown as ThreatLockerClient;
   });
+
+  const computerId = 'e5f6a7b8-c9d0-1234-efab-345678901234';
 
   it('has correct schema', () => {
     expect(maintenanceModeTool.name).toBe('maintenance_mode');
     expect(maintenanceModeZodSchema.action.options).toContain('get_history');
+    expect(maintenanceModeZodSchema.action.options).toContain('enable');
+    expect(maintenanceModeZodSchema.action.options).toContain('end');
+  });
+
+  it('registers enable and end as write actions and is destructive', () => {
+    expect(maintenanceModeTool.writeActions?.has('enable')).toBe(true);
+    expect(maintenanceModeTool.writeActions?.has('end')).toBe(true);
+    expect(maintenanceModeTool.annotations?.destructiveHint).toBe(true);
+  });
+
+  it('enable posts MaintenanceModeInsert with the maintenance type and window', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: {} });
+    await handleMaintenanceModeTool(mockClient, {
+      action: 'enable',
+      computerId,
+      maintenanceTypeId: 2,
+      startDateTime: '2025-01-01T00:00:00Z',
+      endDateTime: '2025-01-01T01:00:00Z',
+    });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'MaintenanceMode/MaintenanceModeInsert',
+      expect.objectContaining({ computerId, maintenanceTypeId: 2, startDateTime: '2025-01-01T00:00:00Z', endDateTime: '2025-01-01T01:00:00Z' })
+    );
+  });
+
+  it('enable requires maintenanceTypeId', async () => {
+    const result = await handleMaintenanceModeTool(mockClient, { action: 'enable', computerId });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.message).toContain('maintenanceTypeId');
+  });
+
+  it('end patches MaintenanceModeEndById with the live maintenanceModeId', async () => {
+    vi.mocked(mockClient.patch).mockResolvedValue({ success: true, data: {} });
+    await handleMaintenanceModeTool(mockClient, {
+      action: 'end',
+      computerId,
+      maintenanceModeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      maintenanceTypeId: 2,
+    });
+    expect(mockClient.patch).toHaveBeenCalledWith(
+      'MaintenanceMode/MaintenanceModeEndById',
+      expect.objectContaining({ computerId, maintenanceModeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', maintenanceTypeId: 2 })
+    );
+  });
+
+  it('end requires maintenanceModeId', async () => {
+    const result = await handleMaintenanceModeTool(mockClient, { action: 'end', computerId, maintenanceTypeId: 2 });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.message).toContain('maintenanceModeId');
   });
 
   it('returns error for missing action', async () => {

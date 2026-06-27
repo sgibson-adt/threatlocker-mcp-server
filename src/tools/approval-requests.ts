@@ -47,6 +47,22 @@ export async function handleApprovalRequestsTool(
       return client.get('ApprovalRequest/ApprovalRequestGetById', { approvalRequestId });
     }
 
+    case 'reject': {
+      if (!approvalRequestId) {
+        return errorResponse('BAD_REQUEST', 'approvalRequestId is required for reject action');
+      }
+      const guidError = validateGuid(approvalRequestId, 'approvalRequestId');
+      if (guidError) return guidError;
+      return client.post('ApprovalRequest/ApprovalRequestUpdateForReject', {
+        approvalRequestDtos: [{ approvalRequestId }],
+        type: 'reject',
+        rejectReason: (input.rejectReason as string | undefined) ?? '',
+        responseSubject: input.responseSubject,
+        responseReason: input.responseReason,
+        notifyOnResponse: input.notifyOnResponse ?? false,
+      });
+    }
+
     case 'count':
       return client.get('ApprovalRequest/ApprovalRequestGetCount', {});
 
@@ -83,7 +99,11 @@ export async function handleApprovalRequestsTool(
 }
 
 export const approvalRequestsZodSchema = {
-  action: z.enum(['list', 'get', 'count', 'get_file_download_details', 'get_permit_application', 'get_storage_approval']).describe('list=search requests, get=single request details, count=pending count, get_file_download_details=file download info, get_permit_application=permit options, get_storage_approval=storage request details'),
+  action: z.enum(['list', 'get', 'count', 'get_file_download_details', 'get_permit_application', 'get_storage_approval', 'reject']).describe('list=search requests, get=single request details, count=pending count, get_file_download_details=file download info, get_permit_application=permit options, get_storage_approval=storage request details, reject=reject a pending request with a reason'),
+  rejectReason: z.string().max(2000).optional().describe('Reason shown to the requestor when rejecting (reject action).'),
+  responseSubject: z.string().max(500).optional().describe('Optional response email subject for reject.'),
+  responseReason: z.string().max(2000).optional().describe('Optional response email body for reject.'),
+  notifyOnResponse: z.boolean().optional().describe('Email the requestor on reject (default: false).'),
   approvalRequestId: z.string().max(100).optional().describe('Approval request GUID (required for get, get_file_download_details, get_permit_application, get_storage_approval). Find via list action first.'),
   statusId: z.union([z.literal(1), z.literal(4), z.literal(6), z.literal(10), z.literal(12), z.literal(13), z.literal(16)]).optional().describe('Filter by status: 1=Pending (default for list), 4=Approved, 6=Not Learned, 10=Ignored, 12=Added to Application, 13=Escalated, 16=Self-Approved'),
   searchText: z.string().max(1000).optional().describe('Filter by text'),
@@ -149,8 +169,9 @@ Pagination: list action is paginated (use fetchAllPages=true to auto-fetch all p
 Key response fields: approvalRequestId, username, fullPath, actionType, statusId, computerName, requestDateTime.
 
 Related tools: action_log (see the deny event), applications (find matching apps), policies (create permits)`,
-  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   zodSchema: approvalRequestsZodSchema,
   outputZodSchema: approvalRequestsOutputZodSchema,
+  writeActions: new Set(['reject']),
   handler: handleApprovalRequestsTool,
 };

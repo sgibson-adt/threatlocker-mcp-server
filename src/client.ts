@@ -294,6 +294,42 @@ export class ThreatLockerClient {
       return errorResponse('NETWORK_ERROR', message);
     }
   }
+
+  async patch<T>(endpoint: string, body: unknown): Promise<ApiResponse<T>> {
+    this.log('DEBUG', 'API PATCH', { endpoint, body });
+
+    try {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/${endpoint}`, {
+        method: 'PATCH',
+        headers: this.getHeaders(),
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const code = mapHttpStatusToErrorCode(response.status);
+        let errorBody: string | undefined;
+        try {
+          errorBody = await response.text();
+        } catch { /* ignore */ }
+        this.log('ERROR', 'API PATCH failed', {
+          endpoint,
+          status: response.status,
+          statusText: response.statusText,
+          body: errorBody?.substring(0, 500)
+        });
+        const message = extractErrorMessage(errorBody) ?? response.statusText;
+        return errorResponse(code, message, response.status);
+      }
+
+      const data = await response.json();
+      this.log('DEBUG', 'API PATCH success', { endpoint, status: response.status });
+      return successResponse<T>(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.log('ERROR', 'API PATCH network error', { endpoint, error: message });
+      return errorResponse('NETWORK_ERROR', message);
+    }
+  }
 }
 
 export function extractPaginationFromJsonHeader(headers: Headers): Pagination | undefined {

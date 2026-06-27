@@ -62,6 +62,34 @@ describe('approval_requests tool', () => {
     );
   });
 
+  it('registers reject as a destructive write action', () => {
+    expect(approvalRequestsZodSchema.action.options).toContain('reject');
+    expect(approvalRequestsTool.writeActions?.has('reject')).toBe(true);
+    expect(approvalRequestsTool.annotations?.destructiveHint).toBe(true);
+  });
+
+  it('reject posts UpdateForReject with the request id and reason', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: {} });
+    await handleApprovalRequestsTool(mockClient, {
+      action: 'reject',
+      approvalRequestId: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
+      rejectReason: 'not approved',
+    });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ApprovalRequest/ApprovalRequestUpdateForReject',
+      expect.objectContaining({
+        rejectReason: 'not approved',
+        approvalRequestDtos: [expect.objectContaining({ approvalRequestId: 'c3d4e5f6-a7b8-9012-cdef-123456789012' })],
+      })
+    );
+  });
+
+  it('reject requires approvalRequestId', async () => {
+    const result = await handleApprovalRequestsTool(mockClient, { action: 'reject', rejectReason: 'x' });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.message).toContain('approvalRequestId');
+  });
+
   it('returns error for get without approvalRequestId', async () => {
     const result = await handleApprovalRequestsTool(mockClient, { action: 'get' });
     expect(result.success).toBe(false);

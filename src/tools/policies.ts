@@ -29,6 +29,28 @@ export async function handlePoliciesTool(
       return client.get('Policy/PolicyGetById', { policyId });
     }
 
+    case 'list_all': {
+      const groupId = input.computerGroupId as string | undefined;
+      if (groupId) {
+        const groupGuidError = validateGuid(groupId, 'computerGroupId');
+        if (groupGuidError) return groupGuidError;
+      }
+      return client.post(
+        'Policy/PolicyGetByParameters',
+        {
+          filter: (input.filter as string | undefined) ?? '',
+          pageNumber,
+          pageSize,
+          computerGroupId: groupId || undefined,
+          osType: input.osType,
+          searchText: (input.searchText as string | undefined) || '',
+          activeOnly: input.activeOnly,
+          showAllPolicies: input.showAllPolicies,
+        },
+        extractPaginationFromHeaders
+      );
+    }
+
     case 'list_by_application': {
       if (!applicationId) {
         return errorResponse('BAD_REQUEST', 'applicationId is required for list_by_application action');
@@ -206,7 +228,11 @@ export async function handlePoliciesTool(
 }
 
 export const policiesZodSchema = {
-  action: z.enum(['get', 'list_by_application', 'create', 'update', 'delete', 'copy', 'deploy']).describe('get=single policy by ID, list_by_application=all policies for an application, create=create new policy, update=update existing policy (full replace - use get first to read current values), delete=delete policies, copy=copy policies between groups, deploy=deploy pending policy changes'),
+  action: z.enum(['get', 'list_all', 'list_by_application', 'create', 'update', 'delete', 'copy', 'deploy']).describe('get=single policy by ID, list_all=search/list policies for a group or org (no applicationId needed), list_by_application=all policies for an application, create=create new policy, update=update existing policy (full replace - use get first to read current values), delete=delete policies, copy=copy policies between groups, deploy=deploy pending policy changes'),
+  filter: z.enum(['', 'nomatch', 'match', 'over6weeks', 'ringfence', 'noringfence', 'elevation', 'permitonly']).optional().describe('list_all filter: ""=all, nomatch, match, over6weeks, ringfence, noringfence, elevation, permitonly'),
+  searchText: z.string().max(1000).optional().describe('Free-text filter for list_all'),
+  activeOnly: z.boolean().optional().describe('list_all: only return active policies'),
+  showAllPolicies: z.boolean().optional().describe('list_all: include inherited higher-level policies'),
   policyId: z.string().max(100).optional().describe('Policy GUID (required for get, update)'),
   applicationId: z.string().max(100).optional().describe('Application GUID (required for list_by_application). Find via applications search first.'),
   organizationId: z.string().max(100).optional().describe('Organization GUID (required for list_by_application, deploy). Find via organizations first.'),
@@ -262,7 +288,7 @@ export const policiesTool: ToolDefinition = {
   title: 'ThreatLocker Policies',
   description: `Manage ThreatLocker policies.
 
-Note: There is no list-all-policies action. You must first find an applicationId using applications, then use list_by_application.
+Use list_all to search policies by computer group / org / filter without an applicationId; use list_by_application when you already have an applicationId.
 
 Policies define what applications can run on which computer groups. A policy links an application (set of file rules) to a computer group with an action (permit/deny/ringfence).
 

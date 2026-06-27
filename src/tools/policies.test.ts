@@ -20,8 +20,29 @@ describe('policies tool', () => {
     expect(policiesTool.annotations?.destructiveHint).toBe(true);
   });
 
+  it('calls PolicyGetByParameters for list_all with filter and paging', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handlePoliciesTool(mockClient, { action: 'list_all', filter: 'ringfence', osType: 1, searchText: 'chrome' });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'Policy/PolicyGetByParameters',
+      expect.objectContaining({ filter: 'ringfence', osType: 1, searchText: 'chrome', pageNumber: 1, pageSize: 25 }),
+      expect.any(Function)
+    );
+  });
+
+  it('defaults list_all filter to empty string', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handlePoliciesTool(mockClient, { action: 'list_all' });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'Policy/PolicyGetByParameters',
+      expect.objectContaining({ filter: '' }),
+      expect.any(Function)
+    );
+  });
+
   it('has correct schema', () => {
     expect(policiesTool.name).toBe('policies');
+    expect(policiesZodSchema.action.options).toContain('list_all');
     expect(policiesZodSchema.action.options).toContain('get');
     expect(policiesZodSchema.action.options).toContain('list_by_application');
     expect(policiesZodSchema.action.options).toContain('create');
