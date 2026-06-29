@@ -4,9 +4,8 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.1.x   | :white_check_mark: |
-| 1.0.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+| 1.2.x   | :white_check_mark: |
+| < 1.2   | :x:                |
 
 Only the latest minor release receives security updates.
 

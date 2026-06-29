@@ -2,6 +2,43 @@
 
 All notable changes to the ThreatLocker MCP Server are documented here.
 
+## 1.2.0 (2026-06-29)
+
+Outcome of a full tooling audit reconciling the 16 tools against the Swagger spec, Postman collection, and the ThreatLocker KB, followed by read-only live validation against the API.
+
+### Added
+- New actions (all writes gated by `THREATLOCKER_READ_ONLY`, annotated, and verified against documented payloads):
+  - `policies`: `list_all` — search policies by group/org/filter without needing an `applicationId`
+  - `maintenance_mode`: `enable`, `end`
+  - `computers`: `isolate`, `lockdown`, `enable_protection`, `baseline_rescan`, `restart_service`
+  - `approval_requests`: `reject`, `take_ownership`
+  - `scheduled_actions`: `schedule` (batched agent version update; `batchAmount` required to prevent a fleet-wide simultaneous update)
+  - `network_access_policies`: `create`
+- `action_log`: `policyId`, `actionTypes[]`, `showKnownThreatsOnly` filters (live-validated); `getAllParents` on `get`; `hostname` + paging on `file_history`
+- `reports`: `startDate`/`endDate`/`includeChildOrganizations`/`offsetInMinutes` on `get_data`
+- `scheduled_actions`: `osType`/`includeChildren`/`searchText` on `get_applies_to`
+- `online_devices`: `orderBy`/`isAscending`
+- `policies`: scalar passthroughs `monitorMode`, `orderBefore`, `elevationEndDate`, `description`
+- Best-practices guidance (pitfalls, enum cheat-sheets, workflows) baked into tool descriptions
+- `client.patch()` for PATCH endpoints
+
+### Fixed
+- `action_log`: `onlyTrueDenies`/`simulateDeny` now actually filter — they require `actionId=99` plus a `MonitorOnly` entry in `paramsFieldsDto`; previously sent as bare booleans and silently ignored. Verified live (234,219 → 300). `actionId` enum widened to include `3` (Deny Option to Request) and `6` (Ringfenced)
+- `system_audit`: the username filter is now sent under the API's `emailAddress` field (was under `username`, which the API ignores). Verified live
+- `maintenance_mode`: `get_history` declared a non-existent `userName` field that crashed every call — replaced with `addedBy`/`endedBy`/`displayName`
+- `versions`: reverted an erroneous `osType`→`OSTypes` rename (the live response key is `osType`)
+- Hardened all 16 tools' output schemas to tolerate the `null` string fields the live API returns on grouped/system rows, preventing structured-output validation crashes
+- `enums`: removed spurious `maintenanceTypeIds` `8`; `osType` `7` = "Red Hat Enterprise Linux 6"; canonical `elevationStatus` labels; added an enum-drift guard test
+- Resolved all `npm audit` advisories (transitive dev dependencies)
+
+### Changed
+- `approval_requests`: `list` now defaults to newest-first
+- `applications`, `policies`: annotated `destructiveHint: true` (both expose delete actions)
+
+### Notes
+- Write actions are payload-verified and unit-tested but not yet live-write-tested — validate in a non-production org before relying on them.
+- Deferred: `approval_requests.permit` (large opaque-`json` round-trip), nested policy ringfencing builders, and storage-policy writes (no documented endpoint).
+
 ## 1.0.2 (2026-02-13)
 
 ### Fixed
