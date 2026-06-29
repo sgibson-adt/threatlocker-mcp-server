@@ -100,11 +100,11 @@ export const networkAccessPoliciesZodSchema = {
 };
 
 const networkAccessPolicyObject = z.object({
-  networkAccessPolicyId: z.string(),
-  name: z.string(),
+  networkAccessPolicyId: z.string().nullable(),
+  name: z.string().nullable(),
   policyActionId: z.number().describe('1=Permit, 2=Deny'),
   isEnabled: z.boolean(),
-  organizationId: z.string(),
+  organizationId: z.string().nullable(),
   osType: z.number(),
   direction: z.number().describe('1=Inbound, 2=Outbound'),
 }).passthrough();

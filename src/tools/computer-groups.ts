@@ -99,21 +99,21 @@ export const computerGroupsZodSchema = {
 };
 
 const dropdownItem = z.object({
-  label: z.string(),
-  value: z.string(),
+  label: z.string().nullable(),
+  value: z.string().nullable(),
 }).passthrough();
 
 const permitGroupObject = z.object({
-  computerGroupId: z.string(),
-  name: z.string(),
-  organizationId: z.string(),
+  computerGroupId: z.string().nullable(),
+  name: z.string().nullable(),
+  organizationId: z.string().nullable(),
   osType: z.number(),
 }).passthrough();
 
 export const computerGroupsOutputZodSchema = {
   success: z.boolean(),
   data: z.union([
-    z.array(z.object({ label: z.string(), value: z.string() }).passthrough()).describe('list: array of groups with label/value and nested items'),
+    z.array(z.object({ label: z.string().nullable(), value: z.string().nullable() }).passthrough()).describe('list: array of groups with label/value and nested items'),
     z.array(dropdownItem).describe('dropdown: array of dropdown items'),
     z.object({}).passthrough().describe('dropdown_with_org: object with organizations array'),
     z.array(permitGroupObject).describe('get_for_permit: array of groups for approval workflow'),

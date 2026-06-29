@@ -39,10 +39,10 @@ export const onlineDevicesZodSchema = {
 export const onlineDevicesOutputZodSchema = {
   success: z.boolean(),
   data: z.array(z.object({
-    computerName: z.string(),
-    computerGroupName: z.string(),
-    lastCheckin: z.string(),
-    ipAddress: z.string(),
+    computerName: z.string().nullable(),
+    computerGroupName: z.string().nullable(),
+    lastCheckin: z.string().nullable(),
+    ipAddress: z.string().nullable(),
   }).passthrough()).optional().describe('list: array of online device objects'),
   pagination: paginationOutputSchema.optional(),
   error: errorOutputSchema.optional(),

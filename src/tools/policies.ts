@@ -263,11 +263,11 @@ export const policiesZodSchema = {
 };
 
 const policyObject = z.object({
-  policyId: z.string(),
-  name: z.string(),
+  policyId: z.string().nullable(),
+  name: z.string().nullable(),
   policyActionId: z.number().describe('1=Permit, 2=Deny, 6=Permit+Ringfence'),
-  applicationId: z.string(),
-  computerGroupId: z.string(),
+  applicationId: z.string().nullable(),
+  computerGroupId: z.string().nullable(),
   isEnabled: z.boolean(),
 }).passthrough();
 

@@ -168,16 +168,16 @@ export const computersZodSchema = {
 };
 
 const computerObject = z.object({
-  computerId: z.string(),
-  computerName: z.string(),
-  hostname: z.string(),
-  group: z.string().describe('Computer group name'),
-  organizationId: z.string(),
+  computerId: z.string().nullable(),
+  computerName: z.string().nullable(),
+  hostname: z.string().nullable(),
+  group: z.string().nullable().describe('Computer group name'),
+  organizationId: z.string().nullable(),
   osType: z.number(),
-  action: z.string().describe('Secure, Installation, Learning, or MonitorOnly'),
-  mode: z.string(),
-  lastCheckin: z.string(),
-  threatLockerVersion: z.string(),
+  action: z.string().nullable().describe('Secure, Installation, Learning, or MonitorOnly'),
+  mode: z.string().nullable(),
+  lastCheckin: z.string().nullable(),
+  threatLockerVersion: z.string().nullable(),
 }).passthrough();
 
 export const computersOutputZodSchema = {
@@ -186,9 +186,9 @@ export const computersOutputZodSchema = {
     z.array(computerObject).describe('list: array of computers'),
     computerObject.describe('get: single computer detail'),
     z.array(z.object({
-      computerId: z.string(),
-      checkinType: z.string(),
-      dateTime: z.string(),
+      computerId: z.string().nullable(),
+      checkinType: z.string().nullable(),
+      dateTime: z.string().nullable(),
     }).passthrough()).describe('checkins: array of check-in records'),
     z.object({}).passthrough().describe('get_install_info: installation details'),
   ]).optional().describe('Response data — shape varies by action'),

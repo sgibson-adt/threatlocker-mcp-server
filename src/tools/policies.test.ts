@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handlePoliciesTool, policiesZodSchema, policiesTool } from './policies.js';
+import { z } from 'zod';
+import { handlePoliciesTool, policiesZodSchema, policiesTool, policiesOutputZodSchema } from './policies.js';
 import { ThreatLockerClient } from '../client.js';
 
 vi.mock('../client.js');
@@ -38,6 +39,15 @@ describe('policies tool', () => {
       expect.objectContaining({ filter: '' }),
       expect.any(Function)
     );
+  });
+
+  it('output schema accepts a policy row with null string fields', () => {
+    const schema = z.object(policiesOutputZodSchema as Record<string, z.ZodTypeAny>);
+    const resp = {
+      success: true,
+      data: [{ policyId: null, name: null, policyActionId: 1, applicationId: null, computerGroupId: null, isEnabled: true }],
+    };
+    expect(schema.safeParse(resp).success).toBe(true);
   });
 
   it('has correct schema', () => {

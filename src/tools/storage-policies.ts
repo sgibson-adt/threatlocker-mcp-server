@@ -56,14 +56,14 @@ export const storagePoliciesZodSchema = {
 };
 
 const storagePolicyObject = z.object({
-  storagePolicyId: z.string(),
-  name: z.string(),
-  policyType: z.string(),
+  storagePolicyId: z.string().nullable(),
+  name: z.string().nullable(),
+  policyType: z.string().nullable(),
   policyActionId: z.number(),
   osType: z.number(),
   isEnabled: z.boolean(),
-  appliesToId: z.string(),
-  organizationId: z.string(),
+  appliesToId: z.string().nullable(),
+  organizationId: z.string().nullable(),
 }).passthrough();
 
 export const storagePoliciesOutputZodSchema = {

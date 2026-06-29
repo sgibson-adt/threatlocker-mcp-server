@@ -139,12 +139,12 @@ export const scheduledActionsZodSchema = {
 };
 
 const scheduledActionObject = z.object({
-  scheduledAgentActionId: z.string(),
+  scheduledAgentActionId: z.string().nullable(),
   scheduledType: z.number(),
-  scheduledDateTime: z.string(),
-  computerName: z.string(),
-  computerGroupName: z.string(),
-  status: z.string(),
+  scheduledDateTime: z.string().nullable(),
+  computerName: z.string().nullable(),
+  computerGroupName: z.string().nullable(),
+  status: z.string().nullable(),
 }).passthrough();
 
 export const scheduledActionsOutputZodSchema = {

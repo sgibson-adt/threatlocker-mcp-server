@@ -48,8 +48,8 @@ export const tagsZodSchema = {
 };
 
 const tagObject = z.object({
-  tagId: z.string(),
-  name: z.string(),
+  tagId: z.string().nullable(),
+  name: z.string().nullable(),
   tagType: z.number(),
   tagItemsText: z.array(z.unknown()).optional().describe('Text/domain entries'),
   tagItemsIPv4: z.array(z.unknown()).optional().describe('IPv4 entries'),
@@ -59,8 +59,8 @@ const tagObject = z.object({
 }).passthrough();
 
 const dropdownItem = z.object({
-  label: z.string(),
-  value: z.string(),
+  label: z.string().nullable(),
+  value: z.string().nullable(),
 }).passthrough();
 
 export const tagsOutputZodSchema = {

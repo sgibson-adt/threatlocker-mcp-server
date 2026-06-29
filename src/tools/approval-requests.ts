@@ -125,18 +125,18 @@ export const approvalRequestsZodSchema = {
 };
 
 const approvalRequestObject = z.object({
-  approvalRequestId: z.string(),
-  username: z.string(),
-  hostname: z.string(),
-  path: z.string(),
+  approvalRequestId: z.string().nullable(),
+  username: z.string().nullable(),
+  hostname: z.string().nullable(),
+  path: z.string().nullable(),
   statusId: z.number().describe('1=Pending, 4=Approved, 6=Not Learned, 10=Ignored, 12=Added, 13=Escalated, 16=Self-Approved, 17=Escalated by Customer'),
-  actionType: z.string().optional(),
+  actionType: z.string().nullable().optional(),
   requestorReason: z.string().nullable().optional().describe('Reason the end user gave for the request'),
   ticketId: z.string().nullable().optional(),
   isAssigned: z.boolean().optional().describe('Whether the request has been taken ownership of'),
-  dateTime: z.string(),
-  organizationId: z.string(),
-  computerId: z.string(),
+  dateTime: z.string().nullable(),
+  organizationId: z.string().nullable(),
+  computerId: z.string().nullable(),
 }).passthrough();
 
 export const approvalRequestsOutputZodSchema = {

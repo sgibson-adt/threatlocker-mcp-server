@@ -347,8 +347,8 @@ export const applicationsZodSchema = {
 };
 
 const applicationObject = z.object({
-  applicationId: z.string(),
-  name: z.string(),
+  applicationId: z.string().nullable(),
+  name: z.string().nullable(),
   osType: z.number(),
   isBuiltIn: z.boolean(),
   computerCounts: z.number(),
@@ -357,10 +357,10 @@ const applicationObject = z.object({
 }).passthrough();
 
 const researchObject = z.object({
-  productName: z.string(),
-  productDescription: z.string(),
-  concernRating: z.number(),
-  reviewRating: z.number(),
+  productName: z.string().nullable(),
+  productDescription: z.string().nullable(),
+  concernRating: z.number().nullable(),
+  reviewRating: z.number().nullable(),
   categories: z.array(z.string()),
   countriesWhereCodeCompiled: z.array(z.string()),
 }).passthrough();
@@ -374,9 +374,9 @@ export const applicationsOutputZodSchema = {
     researchObject.describe('research: ThreatLocker security analysis'),
     z.array(z.object({
       applicationFileId: z.number().describe('ID needed to target this rule with remove_file'),
-      fullPath: z.string(),
-      hash: z.string(),
-      cert: z.string(),
+      fullPath: z.string().nullable(),
+      hash: z.string().nullable(),
+      cert: z.string().nullable(),
     }).passthrough()).describe('files: array of file rules'),
     applicationObject.describe('create/update: created or updated application'),
     z.any().describe('delete/delete_confirm: deletion result'),

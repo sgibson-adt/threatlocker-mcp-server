@@ -45,7 +45,7 @@ export const reportsZodSchema = {
 };
 
 const reportCategoryObject = z.object({
-  category: z.string(),
+  category: z.string().nullable(),
   reports: z.array(z.object({}).passthrough()),
 }).passthrough();
 

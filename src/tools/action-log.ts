@@ -169,7 +169,7 @@ export const actionLogZodSchema = {
 
 const actionLogObject = z.object({
   actionLogId: z.number(),
-  eActionLogId: z.string(),
+  eActionLogId: z.string().nullable(),
   // Many string fields come back null for grouped results or non-application
   // events (network/registry/etc.), so they are declared nullable to match reality.
   fullPath: z.string().nullable(),

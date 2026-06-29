@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleComputersTool, computersZodSchema, computersTool } from './computers.js';
+import { z } from 'zod';
+import { handleComputersTool, computersZodSchema, computersTool, computersOutputZodSchema } from './computers.js';
 import { ThreatLockerClient } from '../client.js';
 
 vi.mock('../client.js');
@@ -12,6 +13,17 @@ describe('computers tool', () => {
       post: vi.fn(),
       get: vi.fn(),
     } as unknown as ThreatLockerClient;
+  });
+
+  // Hardening sweep: the live API can null descriptive string fields on some rows;
+  // the output schema must tolerate it rather than crash with a validation error.
+  it('output schema accepts a computer row with null string fields', () => {
+    const schema = z.object(computersOutputZodSchema as Record<string, z.ZodTypeAny>);
+    const resp = {
+      success: true,
+      data: [{ computerId: null, computerName: null, hostname: null, group: null, organizationId: null, osType: 1, action: null, mode: null, lastCheckin: null, threatLockerVersion: null }],
+    };
+    expect(schema.safeParse(resp).success).toBe(true);
   });
 
   it('has correct schema', () => {

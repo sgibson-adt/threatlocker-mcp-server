@@ -27,8 +27,8 @@ export const threatlockerVersionsZodSchema = {
 export const threatlockerVersionsOutputZodSchema = {
   success: z.boolean(),
   data: z.array(z.object({
-    label: z.string().describe('Version string (e.g., "9.3.3")'),
-    value: z.string().describe('ThreatLockerVersionId'),
+    label: z.string().nullable().describe('Version string (e.g., "9.3.3")'),
+    value: z.string().nullable().describe('ThreatLockerVersionId'),
     isEnabled: z.boolean().describe('Whether this version is installable'),
     dateTime: z.string().describe('When version was added to portal'),
     isDefault: z.boolean().describe('Default version for new computer groups'),

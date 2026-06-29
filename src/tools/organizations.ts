@@ -55,16 +55,16 @@ export const organizationsZodSchema = {
 };
 
 const organizationObject = z.object({
-  organizationId: z.string(),
-  name: z.string(),
-  displayName: z.string(),
-  dateAdded: z.string(),
+  organizationId: z.string().nullable(),
+  name: z.string().nullable(),
+  displayName: z.string().nullable(),
+  dateAdded: z.string().nullable(),
   computerCount: z.number(),
 }).passthrough();
 
 const dropdownItem = z.object({
-  label: z.string(),
-  value: z.string(),
+  label: z.string().nullable(),
+  value: z.string().nullable(),
 }).passthrough();
 
 export const organizationsOutputZodSchema = {
