@@ -44,6 +44,15 @@ describe('online_devices tool', () => {
     );
   });
 
+  it('passes orderBy and isAscending when provided', async () => {
+    vi.mocked(mockClient.get).mockResolvedValue({ success: true, data: [] });
+    await handleOnlineDevicesTool(mockClient, { action: 'list', orderBy: 'lastcheckin', isAscending: false });
+    expect(mockClient.get).toHaveBeenCalledWith(
+      'OnlineDevices/OnlineDevicesGetByParameters',
+      expect.objectContaining({ orderBy: 'lastcheckin', isAscending: 'false' })
+    );
+  });
+
   it('clamps pagination values', async () => {
     vi.mocked(mockClient.get).mockResolvedValue({ success: true, data: [] });
     await handleOnlineDevicesTool(mockClient, { action: 'list', pageNumber: -5, pageSize: 99999 });

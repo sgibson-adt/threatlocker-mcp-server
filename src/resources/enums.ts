@@ -1,11 +1,11 @@
 export const ENUMS = {
   osTypes: {
-    0: 'All',
+    0: 'All (filter only — not a real device OS)',
     1: 'Windows',
     2: 'macOS',
     3: 'Linux',
     5: 'Windows XP',
-    7: 'Red Hat',
+    7: 'Red Hat Enterprise Linux 6',
   },
   actionIds: {
     1: 'Permit',
@@ -20,7 +20,6 @@ export const ENUMS = {
     3: 'Learning',
     4: 'Elevation',
     6: 'TamperProtectionDisabled',
-    8: 'Installation Mode (legacy)',
     14: 'Isolation',
     15: 'Lockdown',
     16: 'DisableOpsAlerts',
@@ -37,6 +36,9 @@ export const ENUMS = {
     13: 'Escalated from Cyber Heroes',
     16: 'Self-Approved',
   },
+  // NOTE: updateChannels integer codes (0-4) are sourced only from the legacy
+  // CLAUDE.md reference; the KB lists channel names but not their numeric codes.
+  // Treat as unverified until confirmed against portal traffic.
   updateChannels: {
     0: 'Manual',
     1: 'Pre-Releases',
@@ -46,10 +48,11 @@ export const ENUMS = {
   },
   elevationStatus: {
     0: 'Do not Elevate / None',
-    1: 'Elevate / Notify',
-    2: 'Silent Elevation',
+    1: 'Elevate (Notify User)',
+    2: 'Elevate (Do Not Notify User)',
     3: 'Force Standard User',
   },
+  // NOTE: ruleIds values are not documented in the KB/swagger; unverified.
   ruleIds: {
     0: 'No Maintenance Mode',
     1: 'Installation Mode (1 hour)',

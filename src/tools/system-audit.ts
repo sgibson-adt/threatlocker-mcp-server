@@ -43,7 +43,8 @@ export async function handleSystemAuditTool(
           endDate,
           pageSize,
           pageNumber,
-          username,
+          // API recognizes `emailAddress`, not `username`; the latter is silently ignored.
+          emailAddress: username,
           action: auditAction,
           ipAddress,
           effectiveAction,
@@ -79,7 +80,7 @@ export const systemAuditZodSchema = {
   action: z.enum(['search', 'health_center']).describe('search=query audit logs with filters, health_center=health dashboard data'),
   startDate: z.string().max(100).optional().describe('Start date (ISO 8601 UTC)'),
   endDate: z.string().max(100).optional().describe('End date (ISO 8601 UTC)'),
-  username: z.string().max(500).optional().describe('Filter by username (wildcards supported)'),
+  username: z.string().max(500).optional().describe('Filter by admin email address (maps to the API emailAddress field; wildcards supported)'),
   auditAction: z.enum(['Create', 'Delete', 'Logon', 'Modify', 'Read']).optional().describe('Filter by audit action type'),
   ipAddress: z.string().max(500).optional().describe('Filter by IP address'),
   effectiveAction: z.enum(['Denied', 'Permitted']).optional().describe('Filter by effective action'),
@@ -92,24 +93,26 @@ export const systemAuditZodSchema = {
   pageSize: z.number().optional().describe('Results per page (default: 25, max: 500)'),
 };
 
+// String fields are declared nullable: the live API returns null for
+// systemAuditId and other fields on some rows (e.g. system-generated events).
 const systemAuditSearchObject = z.object({
-  systemAuditId: z.string(),
-  emailAddress: z.string(),
-  action: z.string().describe('Create, Delete, Logon, Modify, Read'),
-  effectiveAction: z.string().describe('Denied or Permitted'),
-  details: z.object({}).passthrough(),
-  ipAddress: z.string(),
-  dateTime: z.string(),
-  organizationId: z.string(),
+  systemAuditId: z.string().nullable(),
+  emailAddress: z.string().nullable(),
+  action: z.string().nullable().describe('Create, Delete, Logon, Modify, Read'),
+  effectiveAction: z.string().nullable().describe('Denied or Permitted'),
+  details: z.object({}).passthrough().nullable(),
+  ipAddress: z.string().nullable(),
+  dateTime: z.string().nullable(),
+  organizationId: z.string().nullable(),
 }).passthrough();
 
 const healthCenterObject = z.object({
-  systemAuditId: z.string(),
-  emailAddress: z.string(),
-  dateTime: z.string(),
-  effectiveAction: z.string(),
-  ipAddress: z.string(),
-  organizationId: z.string(),
+  systemAuditId: z.string().nullable(),
+  emailAddress: z.string().nullable(),
+  dateTime: z.string().nullable(),
+  effectiveAction: z.string().nullable(),
+  ipAddress: z.string().nullable(),
+  organizationId: z.string().nullable(),
 }).passthrough();
 
 export const systemAuditOutputZodSchema = {

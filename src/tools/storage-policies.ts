@@ -49,7 +49,7 @@ export const storagePoliciesZodSchema = {
   storagePolicyId: z.string().max(100).optional().describe('Storage policy GUID (required for get). Find via list action first.'),
   searchText: z.string().max(1000).optional().describe('Search text to filter policies'),
   appliesToId: z.string().max(100).optional().describe('Computer group GUID to filter by. Find via computer_groups first.'),
-  policyType: z.number().optional().describe('Filter by policy type'),
+  policyType: z.number().optional().describe('Filter by policy type (integer). Note: valid values are not documented in the public API/KB; pass only if you know the value from the portal.'),
   osType: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3), z.literal(5)]).optional().describe('OS type: 0=All, 1=Windows, 2=macOS, 3=Linux, 5=Windows XP'),
   pageNumber: z.number().optional().describe('Page number (default: 1)'),
   pageSize: z.number().optional().describe('Results per page (default: 25, max: 500)'),
@@ -88,6 +88,10 @@ Common workflows:
 - Search by name: action=list, searchText="USB"
 - Filter by computer group: action=list, appliesToId="group-id"
 - Get policy details by ID: action=get, storagePolicyId="..."
+
+Pitfalls:
+- Read-only tool: storage policy creation/editing is not available via the public API (no documented write endpoint).
+- Storage policies are first-match top-down — permits must be ordered above denies.
 
 Permissions: View Storage Control Policies, Edit Storage Control Policies.
 Pagination: list action is paginated (use fetchAllPages=true to auto-fetch all pages).

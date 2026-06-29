@@ -15,8 +15,34 @@ describe('policies tool', () => {
     } as unknown as ThreatLockerClient;
   });
 
+  // Exposes a delete action, so clients must be able to gate it.
+  it('is annotated as destructive', () => {
+    expect(policiesTool.annotations?.destructiveHint).toBe(true);
+  });
+
+  it('calls PolicyGetByParameters for list_all with filter and paging', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handlePoliciesTool(mockClient, { action: 'list_all', filter: 'ringfence', osType: 1, searchText: 'chrome' });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'Policy/PolicyGetByParameters',
+      expect.objectContaining({ filter: 'ringfence', osType: 1, searchText: 'chrome', pageNumber: 1, pageSize: 25 }),
+      expect.any(Function)
+    );
+  });
+
+  it('defaults list_all filter to empty string', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handlePoliciesTool(mockClient, { action: 'list_all' });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'Policy/PolicyGetByParameters',
+      expect.objectContaining({ filter: '' }),
+      expect.any(Function)
+    );
+  });
+
   it('has correct schema', () => {
     expect(policiesTool.name).toBe('policies');
+    expect(policiesZodSchema.action.options).toContain('list_all');
     expect(policiesZodSchema.action.options).toContain('get');
     expect(policiesZodSchema.action.options).toContain('list_by_application');
     expect(policiesZodSchema.action.options).toContain('create');
@@ -157,6 +183,31 @@ describe('policies tool', () => {
       });
       expect(result.success).toBe(false);
       if (!result.success) expect(result.error.message).toContain('must be a valid GUID');
+    });
+
+    it('passes monitorMode, orderBefore, elevationEndDate and description scalars to PolicyInsert', async () => {
+      vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: { policyId: 'new-id' } });
+      await handlePoliciesTool(mockClient, {
+        action: 'create',
+        name: 'Explicit Deny',
+        applicationIds: ['12345678-1234-1234-1234-123456789abc'],
+        computerGroupId: '23456789-2345-2345-2345-23456789abcd',
+        osType: 1,
+        policyActionId: 2,
+        monitorMode: 1,
+        orderBefore: true,
+        elevationEndDate: '2025-02-01T00:00:00Z',
+        description: 'block it',
+      });
+      expect(mockClient.post).toHaveBeenCalledWith(
+        'Policy/PolicyInsert',
+        expect.objectContaining({
+          monitorMode: 1,
+          orderBefore: true,
+          elevationEndDate: '2025-02-01T00:00:00Z',
+          description: 'block it',
+        }),
+      );
     });
 
     it('calls PolicyInsert with correct body', async () => {

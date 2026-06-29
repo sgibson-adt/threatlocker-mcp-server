@@ -51,6 +51,11 @@ const tagObject = z.object({
   tagId: z.string(),
   name: z.string(),
   tagType: z.number(),
+  tagItemsText: z.array(z.unknown()).optional().describe('Text/domain entries'),
+  tagItemsIPv4: z.array(z.unknown()).optional().describe('IPv4 entries'),
+  tagItemsIPv6: z.array(z.unknown()).optional().describe('IPv6 entries'),
+  tagItemsReadablePath: z.array(z.unknown()).optional().describe('Readable path entries'),
+  tagItemsWritablePath: z.array(z.unknown()).optional().describe('Writable path entries'),
 }).passthrough();
 
 const dropdownItem = z.object({
@@ -86,6 +91,10 @@ Tags are used in:
 - Storage Control (restrict file access to tagged paths)
 
 Parent organization tags appear as "parentOrgName\\tagName" format.
+
+Pitfalls:
+- Use dropdown to get the label+value (tagId) needed when building network/ringfence policy payloads.
+- Parent-organization tags use the "ParentOrg\\TagName" format.
 
 Permissions: Edit Network Control Policies, Manage Tags, Edit Application Control Policies.
 Key response fields: tagId, name, tagType, values (IP/domain/port entries).

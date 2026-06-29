@@ -42,6 +42,64 @@ describe('approval_requests tool', () => {
     );
   });
 
+  it('defaults list ordering to newest-first (isAscending=false)', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handleApprovalRequestsTool(mockClient, { action: 'list' });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ApprovalRequest/ApprovalRequestGetByParameters',
+      expect.objectContaining({ isAscending: false }),
+      expect.any(Function)
+    );
+  });
+
+  it('passes showCurrentTierOnly through to list', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handleApprovalRequestsTool(mockClient, { action: 'list', showCurrentTierOnly: true });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ApprovalRequest/ApprovalRequestGetByParameters',
+      expect.objectContaining({ showCurrentTierOnly: true }),
+      expect.any(Function)
+    );
+  });
+
+  it('registers reject as a destructive write action', () => {
+    expect(approvalRequestsZodSchema.action.options).toContain('reject');
+    expect(approvalRequestsTool.writeActions?.has('reject')).toBe(true);
+    expect(approvalRequestsTool.annotations?.destructiveHint).toBe(true);
+  });
+
+  it('reject posts UpdateForReject with the request id and reason', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: {} });
+    await handleApprovalRequestsTool(mockClient, {
+      action: 'reject',
+      approvalRequestId: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
+      rejectReason: 'not approved',
+    });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ApprovalRequest/ApprovalRequestUpdateForReject',
+      expect.objectContaining({
+        rejectReason: 'not approved',
+        approvalRequestDtos: [expect.objectContaining({ approvalRequestId: 'c3d4e5f6-a7b8-9012-cdef-123456789012' })],
+      })
+    );
+  });
+
+  it('reject requires approvalRequestId', async () => {
+    const result = await handleApprovalRequestsTool(mockClient, { action: 'reject', rejectReason: 'x' });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.message).toContain('approvalRequestId');
+  });
+
+  it('take_ownership posts the request id to UpdateForTakeOwnership', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: {} });
+    await handleApprovalRequestsTool(mockClient, { action: 'take_ownership', approvalRequestId: 'c3d4e5f6-a7b8-9012-cdef-123456789012' });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ApprovalRequest/ApprovalRequestUpdateForTakeOwnership',
+      expect.objectContaining({ approvalRequestId: 'c3d4e5f6-a7b8-9012-cdef-123456789012' })
+    );
+    expect(approvalRequestsTool.writeActions?.has('take_ownership')).toBe(true);
+  });
+
   it('returns error for get without approvalRequestId', async () => {
     const result = await handleApprovalRequestsTool(mockClient, { action: 'get' });
     expect(result.success).toBe(false);

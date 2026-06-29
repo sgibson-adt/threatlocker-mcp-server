@@ -29,6 +29,28 @@ export async function handlePoliciesTool(
       return client.get('Policy/PolicyGetById', { policyId });
     }
 
+    case 'list_all': {
+      const groupId = input.computerGroupId as string | undefined;
+      if (groupId) {
+        const groupGuidError = validateGuid(groupId, 'computerGroupId');
+        if (groupGuidError) return groupGuidError;
+      }
+      return client.post(
+        'Policy/PolicyGetByParameters',
+        {
+          filter: (input.filter as string | undefined) ?? '',
+          pageNumber,
+          pageSize,
+          computerGroupId: groupId || undefined,
+          osType: input.osType,
+          searchText: (input.searchText as string | undefined) || '',
+          activeOnly: input.activeOnly,
+          showAllPolicies: input.showAllPolicies,
+        },
+        extractPaginationFromHeaders
+      );
+    }
+
     case 'list_by_application': {
       if (!applicationId) {
         return errorResponse('BAD_REQUEST', 'applicationId is required for list_by_application action');
@@ -89,6 +111,10 @@ export async function handlePoliciesTool(
         elevationStatus: input.elevationStatus ?? 0,
         policyScheduleStatus: input.policyScheduleStatus ?? 0,
         endDate: input.endDate || undefined,
+        elevationEndDate: input.elevationEndDate || undefined,
+        monitorMode: input.monitorMode,
+        orderBefore: input.orderBefore,
+        description: input.description,
         allowRequest: input.allowRequest ?? false,
         killRunningProcesses: input.killRunningProcesses ?? false,
       });
@@ -129,6 +155,10 @@ export async function handlePoliciesTool(
         elevationStatus: input.elevationStatus ?? 0,
         policyScheduleStatus: input.policyScheduleStatus ?? 0,
         endDate: input.endDate || undefined,
+        elevationEndDate: input.elevationEndDate || undefined,
+        monitorMode: input.monitorMode,
+        orderBefore: input.orderBefore,
+        description: input.description,
         allowRequest: input.allowRequest ?? false,
         killRunningProcesses: input.killRunningProcesses ?? false,
       });
@@ -198,7 +228,11 @@ export async function handlePoliciesTool(
 }
 
 export const policiesZodSchema = {
-  action: z.enum(['get', 'list_by_application', 'create', 'update', 'delete', 'copy', 'deploy']).describe('get=single policy by ID, list_by_application=all policies for an application, create=create new policy, update=update existing policy (full replace - use get first to read current values), delete=delete policies, copy=copy policies between groups, deploy=deploy pending policy changes'),
+  action: z.enum(['get', 'list_all', 'list_by_application', 'create', 'update', 'delete', 'copy', 'deploy']).describe('get=single policy by ID, list_all=search/list policies for a group or org (no applicationId needed), list_by_application=all policies for an application, create=create new policy, update=update existing policy (full replace - use get first to read current values), delete=delete policies, copy=copy policies between groups, deploy=deploy pending policy changes'),
+  filter: z.enum(['', 'nomatch', 'match', 'over6weeks', 'ringfence', 'noringfence', 'elevation', 'permitonly']).optional().describe('list_all filter: ""=all, nomatch, match, over6weeks, ringfence, noringfence, elevation, permitonly'),
+  searchText: z.string().max(1000).optional().describe('Free-text filter for list_all'),
+  activeOnly: z.boolean().optional().describe('list_all: only return active policies'),
+  showAllPolicies: z.boolean().optional().describe('list_all: include inherited higher-level policies'),
   policyId: z.string().max(100).optional().describe('Policy GUID (required for get, update)'),
   applicationId: z.string().max(100).optional().describe('Application GUID (required for list_by_application). Find via applications search first.'),
   organizationId: z.string().max(100).optional().describe('Organization GUID (required for list_by_application, deploy). Find via organizations first.'),
@@ -207,6 +241,7 @@ export const policiesZodSchema = {
   pageNumber: z.number().optional().describe('Page number (default: 1)'),
   pageSize: z.number().optional().describe('Results per page (default: 25, max: 500)'),
   name: z.string().max(200).optional().describe('Policy name (required for create, update)'),
+  description: z.string().max(2000).optional().describe('Policy description / notes.'),
   applicationIds: z.array(z.string().max(100)).min(1).max(50).optional().describe('Application GUIDs (required for create, update). Mapped to applicationIdList.'),
   computerGroupId: z.string().max(100).optional().describe('Computer group GUID (required for create, update)'),
   osType: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(5)]).optional().describe('OS type: 1=Windows, 2=macOS, 3=Linux, 5=Windows XP (required for create, update, copy)'),
@@ -216,8 +251,11 @@ export const policiesZodSchema = {
   elevationStatus: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]).optional().describe('0=None, 1=Elevate+Notify, 2=Silent, 3=Force Standard User'),
   policyScheduleStatus: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional().describe('0=None, 1=Expiration, 2=Schedule'),
   endDate: z.string().max(100).optional().describe('Expiration date in UTC (YYYY-MM-DDTHH:MM:SSZ). Used with policyScheduleStatus=1.'),
-  allowRequest: z.boolean().optional().describe('Allow users to request access when denied (default: false)'),
-  killRunningProcesses: z.boolean().optional().describe('Kill running processes when policy denies (default: false)'),
+  elevationEndDate: z.string().max(100).optional().describe('Expiry for an elevation policy in UTC, distinct from endDate.'),
+  monitorMode: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional().describe('0=Inherit, 1=Secured (explicit deny that overrides Learning Mode), 2=Monitor Only.'),
+  orderBefore: z.boolean().optional().describe('Place the new policy at the top of its scope instead of the bottom (policy precedence is first-match-wins).'),
+  allowRequest: z.boolean().optional().describe('Allow users to request access when denied. Only valid with policyActionId=2 (Deny).'),
+  killRunningProcesses: z.boolean().optional().describe('Kill running processes when policy denies. Only valid with policyActionId=2 (Deny).'),
   policyIds: z.array(z.string().max(100)).min(1).max(50).optional().describe('Policy GUIDs (required for delete, copy)'),
   sourceAppliesToId: z.string().max(100).optional().describe('Source computer group GUID (required for copy)'),
   sourceOrganizationId: z.string().max(100).optional().describe('Source organization GUID (required for copy)'),
@@ -250,7 +288,7 @@ export const policiesTool: ToolDefinition = {
   title: 'ThreatLocker Policies',
   description: `Manage ThreatLocker policies.
 
-Note: There is no list-all-policies action. You must first find an applicationId using applications, then use list_by_application.
+Use list_all to search policies by computer group / org / filter without an applicationId; use list_by_application when you already have an applicationId.
 
 Policies define what applications can run on which computer groups. A policy links an application (set of file rules) to a computer group with an action (permit/deny/ringfence).
 
@@ -270,12 +308,18 @@ IMPORTANT: Update is a full replace — use action=get first to read current val
 
 Policy actions: Permit (allow), Deny (block), Ringfence (allow but restrict network/storage access)
 
+Pitfalls:
+- Precedence is first-match-wins (Global > Global Group > Entire Org > Computer > Computer Group). New policies land at the bottom unless orderBefore=true.
+- monitorMode=1 (Secured) creates an explicit deny that overrides Learning Mode; monitorMode=2 is Monitor Only.
+- allowRequest/killRunningProcesses are only valid with policyActionId=2 (Deny).
+- Ringfence requires policyActionId=6; the ringfencingOptions payload is not yet exposed (a bare ringfence policy will have no restrictions).
+
 Permissions: View Application Control Policies, Edit Application Control Policies.
 Pagination: list_by_application is paginated (use fetchAllPages=true to auto-fetch all pages).
 Key response fields: policyId, name, policyActionId, applicationId, computerGroupId, isEnabled.
 
 Related tools: applications (what the policy permits), computer_groups (where policy applies), action_log (see policy enforcement)`,
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   zodSchema: policiesZodSchema,
   outputZodSchema: policiesOutputZodSchema,
   handler: handlePoliciesTool,

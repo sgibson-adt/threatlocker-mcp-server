@@ -30,6 +30,81 @@ describe('computers tool', () => {
     }
   });
 
+  const cId = 'd4e5f6a7-b8c9-0123-defa-234567890123';
+  const orgId = '11111111-2222-3333-4444-555555555555';
+
+  it('registers isolate/lockdown/enable_protection as destructive write actions', () => {
+    for (const a of ['isolate', 'lockdown', 'enable_protection']) {
+      expect(computersZodSchema.action.options).toContain(a);
+      expect(computersTool.writeActions?.has(a)).toBe(true);
+    }
+    expect(computersTool.annotations?.destructiveHint).toBe(true);
+  });
+
+  it('isolate posts ComputerDisableProtection with maintenanceModeType 14', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: {} });
+    await handleComputersTool(mockClient, { action: 'isolate', computerId: cId, organizationId: orgId });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'Computer/ComputerDisableProtection',
+      expect.objectContaining({
+        maintenanceModeType: 14,
+        computerDetailDtos: [expect.objectContaining({ computerId: cId, organizationId: orgId })],
+      })
+    );
+  });
+
+  it('lockdown posts ComputerDisableProtection with maintenanceModeType 15', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: {} });
+    await handleComputersTool(mockClient, { action: 'lockdown', computerId: cId, organizationId: orgId });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'Computer/ComputerDisableProtection',
+      expect.objectContaining({ maintenanceModeType: 15 })
+    );
+  });
+
+  it('enable_protection posts ComputerEnableProtection', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: {} });
+    await handleComputersTool(mockClient, { action: 'enable_protection', computerId: cId, organizationId: orgId });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'Computer/ComputerEnableProtection',
+      expect.objectContaining({
+        computerDetailDtos: [expect.objectContaining({ computerId: cId, organizationId: orgId })],
+      })
+    );
+  });
+
+  it('isolate requires organizationId', async () => {
+    const result = await handleComputersTool(mockClient, { action: 'isolate', computerId: cId });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.message).toContain('organizationId');
+  });
+
+  it('baseline_rescan posts ComputerUpdateBaselineRescan with the detail and learning flag', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: {} });
+    await handleComputersTool(mockClient, { action: 'baseline_rescan', computerId: cId, organizationId: orgId, enableLearning: true });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'Computer/ComputerUpdateBaselineRescan',
+      expect.objectContaining({
+        enableLearning: true,
+        computerDetailDtos: [expect.objectContaining({ computerId: cId, organizationId: orgId })],
+      })
+    );
+  });
+
+  it('restart_service posts a bare array to ComputerUpdateShouldRestartByIds', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: {} });
+    await handleComputersTool(mockClient, { action: 'restart_service', computerId: cId, organizationId: orgId });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'Computer/ComputerUpdateShouldRestartByIds',
+      [expect.objectContaining({ computerId: cId, organizationId: orgId })]
+    );
+  });
+
+  it('registers baseline_rescan and restart_service as write actions', () => {
+    expect(computersTool.writeActions?.has('baseline_rescan')).toBe(true);
+    expect(computersTool.writeActions?.has('restart_service')).toBe(true);
+  });
+
   it('returns error for get without computerId', async () => {
     const result = await handleComputersTool(mockClient, { action: 'get' });
     expect(result.success).toBe(false);

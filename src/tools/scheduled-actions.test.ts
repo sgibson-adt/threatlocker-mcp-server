@@ -56,6 +56,35 @@ describe('scheduled_actions tool', () => {
     );
   });
 
+  it('passes scheduledId and searchText to search body when provided', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: [] });
+    await handleScheduledActionsTool(mockClient, {
+      action: 'search',
+      scheduledId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      searchText: 'WORKSTATION-01',
+    });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ScheduledAgentAction/GetByParameters',
+      expect.objectContaining({
+        scheduledId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        searchText: 'WORKSTATION-01',
+      }),
+      expect.any(Function)
+    );
+  });
+
+  it('returns error for invalid scheduledId in search', async () => {
+    const result = await handleScheduledActionsTool(mockClient, {
+      action: 'search',
+      scheduledId: 'not-a-valid-guid',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('BAD_REQUEST');
+      expect(result.error.message).toContain('scheduledId must be a valid GUID');
+    }
+  });
+
   it('returns error for get without scheduledActionId', async () => {
     const result = await handleScheduledActionsTool(mockClient, { action: 'get' });
     expect(result.success).toBe(false);
@@ -82,9 +111,56 @@ describe('scheduled_actions tool', () => {
     }
   });
 
+  it('schedule posts ScheduledAgentAction with a stringified targetVersionId payload', async () => {
+    vi.mocked(mockClient.post).mockResolvedValue({ success: true, data: {} });
+    await handleScheduledActionsTool(mockClient, {
+      action: 'schedule',
+      targetVersionId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      appliesTo: [{ appliesToId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901', appliesToTypeId: 2 }],
+      batchAmount: 100,
+      windowStartTime: '22:00',
+      windowEndTime: '05:00',
+    });
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'ScheduledAgentAction',
+      expect.objectContaining({
+        scheduledType: 1,
+        scheduledTypePayload: JSON.stringify({ targetVersionId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
+        appliesTo: [{ appliesToId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901', appliesToTypeId: 2 }],
+        batchAmount: 100,
+      })
+    );
+    expect(scheduledActionsTool.writeActions?.has('schedule')).toBe(true);
+  });
+
+  it('schedule requires batchAmount (avoids fleet-wide simultaneous update)', async () => {
+    const result = await handleScheduledActionsTool(mockClient, {
+      action: 'schedule',
+      targetVersionId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      appliesTo: [{ appliesToId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901', appliesToTypeId: 2 }],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.message).toContain('batchAmount');
+  });
+
+  it('schedule requires targetVersionId', async () => {
+    const result = await handleScheduledActionsTool(mockClient, { action: 'schedule', batchAmount: 100, appliesTo: [{ appliesToId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901', appliesToTypeId: 2 }] });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.message).toContain('targetVersionId');
+  });
+
   it('calls correct endpoint for get_applies_to action', async () => {
     vi.mocked(mockClient.get).mockResolvedValue({ success: true, data: [] });
     await handleScheduledActionsTool(mockClient, { action: 'get_applies_to' });
-    expect(mockClient.get).toHaveBeenCalledWith('ScheduledAgentAction/AppliesTo', {});
+    expect(mockClient.get).toHaveBeenCalledWith('ScheduledAgentAction/AppliesTo', expect.any(Object));
+  });
+
+  it('passes osType, includeChildren and searchText to get_applies_to', async () => {
+    vi.mocked(mockClient.get).mockResolvedValue({ success: true, data: [] });
+    await handleScheduledActionsTool(mockClient, { action: 'get_applies_to', osType: 1, includeChildren: true, searchText: 'eng' });
+    expect(mockClient.get).toHaveBeenCalledWith(
+      'ScheduledAgentAction/AppliesTo',
+      expect.objectContaining({ osType: '1', includeChildren: 'true', searchText: 'eng' })
+    );
   });
 });

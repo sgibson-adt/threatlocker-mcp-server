@@ -358,6 +358,47 @@ describe('ThreatLockerClient.post', () => {
   });
 });
 
+describe('ThreatLockerClient.patch', () => {
+  let client: ThreatLockerClient;
+
+  beforeEach(() => {
+    client = new ThreatLockerClient({
+      apiKey: 'test-api-key',
+      baseUrl: 'https://portalapi.g.threatlocker.com/portalapi',
+      maxRetries: 0,
+    });
+  });
+
+  it('sends PATCH method with JSON body', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+      headers: new Headers(),
+    });
+
+    await client.patch('Test/Endpoint', { name: 'test' });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ name: 'test' }),
+      })
+    );
+  });
+
+  it('returns error response for non-OK status', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      text: async () => '',
+    });
+    const result = await client.patch('Test/Endpoint', {});
+    expect(result.success).toBe(false);
+  });
+});
+
 describe('ThreatLockerClient.put', () => {
   let client: ThreatLockerClient;
 

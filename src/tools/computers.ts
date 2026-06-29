@@ -78,18 +78,86 @@ export async function handleComputersTool(
     case 'get_install_info':
       return client.get('Computer/ComputerGetForNewComputer', {});
 
+    case 'isolate':
+    case 'lockdown': {
+      const detail = buildComputerDetail(input);
+      if ('error' in detail) return detail.error;
+      const maintenanceModeType = action === 'isolate' ? 14 : 15;
+      return client.post('Computer/ComputerDisableProtection', {
+        computerDetailDtos: [detail.value],
+        startDate: input.startDate,
+        endDate: input.endDate,
+        maintenanceModeType,
+        permitEnd: input.permitEnd ?? true,
+        applicationId: (input.applicationId as string | undefined) ?? 'autocomp',
+      });
+    }
+
+    case 'enable_protection': {
+      const detail = buildComputerDetail(input);
+      if ('error' in detail) return detail.error;
+      return client.post('Computer/ComputerEnableProtection', {
+        computerDetailDtos: [detail.value],
+      });
+    }
+
+    case 'baseline_rescan': {
+      const detail = buildComputerDetail(input);
+      if ('error' in detail) return detail.error;
+      return client.post('Computer/ComputerUpdateBaselineRescan', {
+        computerDetailDtos: [detail.value],
+        enableLearning: input.enableLearning ?? false,
+      });
+    }
+
+    case 'restart_service': {
+      const detail = buildComputerDetail(input);
+      if ('error' in detail) return detail.error;
+      // Endpoint expects a bare array of computer detail records.
+      return client.post('Computer/ComputerUpdateShouldRestartByIds', [detail.value]);
+    }
+
     default:
       return errorResponse('BAD_REQUEST', `Unknown action: ${action}`);
   }
 }
 
+/** Build and validate a single computerDetailDtos entry for protection actions. */
+function buildComputerDetail(
+  input: Record<string, unknown>
+): { value: Record<string, unknown> } | { error: ApiResponse<never> } {
+  const computerId = input.computerId as string | undefined;
+  const organizationId = input.organizationId as string | undefined;
+  if (!computerId) return { error: errorResponse('BAD_REQUEST', 'computerId is required for this action') };
+  const cidError = validateGuid(computerId, 'computerId');
+  if (cidError) return { error: cidError };
+  if (!organizationId) return { error: errorResponse('BAD_REQUEST', 'organizationId is required for this action (find via computers list / organizations)') };
+  const orgError = validateGuid(organizationId, 'organizationId');
+  if (orgError) return { error: orgError };
+  const detail: Record<string, unknown> = { computerId, organizationId };
+  const computerGroupId = input.computerGroupId as string | undefined;
+  if (computerGroupId) {
+    const grpError = validateGuid(computerGroupId, 'computerGroupId');
+    if (grpError) return { error: grpError };
+    detail.computerGroupId = computerGroupId;
+  }
+  return { value: detail };
+}
+
 export const computersZodSchema = {
-  action: z.enum(['list', 'get', 'checkins', 'get_install_info']).describe('list=search computers, get=details by ID, checkins=connection history, get_install_info=deployment info'),
-  computerId: z.string().max(100).optional().describe('Computer GUID (required for get and checkins). Find via list action first.'),
+  action: z.enum(['list', 'get', 'checkins', 'get_install_info', 'isolate', 'lockdown', 'enable_protection', 'baseline_rescan', 'restart_service']).describe('list=search computers, get=details by ID, checkins=connection history, get_install_info=deployment info, isolate=cut network (Detect+Agent>=8.2), lockdown=block executions+isolate, enable_protection=re-secure / clear isolation, baseline_rescan=re-profile system files, restart_service=restart the ThreatLocker agent service'),
+  enableLearning: z.boolean().optional().describe('Enable a learning window during baseline_rescan (default: false).'),
+  computerId: z.string().max(100).optional().describe('Computer GUID (required for get, checkins, isolate, lockdown, enable_protection). Find via list action first.'),
+  organizationId: z.string().max(100).optional().describe('Owning organization GUID (required for isolate/lockdown/enable_protection).'),
+  startDate: z.string().max(100).optional().describe('Isolation/lockdown window start (ISO 8601 UTC).'),
+  endDate: z.string().max(100).optional().describe('Isolation/lockdown window end (ISO 8601 UTC).'),
+  permitEnd: z.boolean().optional().describe('Re-secure automatically at window end (default: true).'),
+  applicationId: z.string().max(100).optional().describe('Application scope for isolation: "autocomp" (default), "autogroup", or an application GUID.'),
   searchText: z.string().max(1000).optional().describe('Search text for list action'),
   searchBy: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional().describe('Field to search by: 1=Computer/Asset Name, 2=Username, 3=Computer Group Name, 4=Last Check-in IP, 5=Organization Name'),
   action_filter: z.enum(['Secure', 'Installation', 'Learning', 'MonitorOnly']).optional().describe('Filter by computer mode for list action'),
   computerGroup: z.string().max(100).optional().describe('Computer group GUID for list action. Find via computer_groups first.'),
+  computerGroupId: z.string().max(100).optional().describe('Computer group GUID for isolate/lockdown/enable_protection (optional).'),
   orderBy: z.enum(['computername', 'group', 'action', 'lastcheckin', 'computerinstalldate', 'deniedcountthreedays', 'updatechannel', 'threatlockerversion']).optional().describe('Field to sort by (default: computername)'),
   isAscending: z.boolean().optional().describe('Sort ascending (default: true)'),
   childOrganizations: z.boolean().optional().describe('Include child organizations (default: false)'),
@@ -141,12 +209,17 @@ Common workflows:
 - View check-in history: action=checkins, computerId="..."
 - Get installation info for new deployments: action=get_install_info
 
+Pitfalls:
+- get returns the editable computer record, not live protection state; read current mode/isolation from list results or maintenance_mode history.
+- This is the triage entry point: find a box here, grab its computerId/organizationId/computerGroupId, then hand off to maintenance_mode, approval_requests, or action_log.
+
 Permissions: View Computers, Edit Computers (for modifications), Install Computers (for install info).
 Pagination: list and checkins actions are paginated (use fetchAllPages=true to auto-fetch all pages).
 Key response fields: computerId, computerName, computerGroupName, lastCheckin, action (Secure/Installation/Learning/MonitorOnly), threatLockerVersion.
 
 Related tools: computer_groups (manage groups), maintenance_mode (maintenance history), action_log (audit events)`,
-  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+  writeActions: new Set(['isolate', 'lockdown', 'enable_protection', 'baseline_rescan', 'restart_service']),
   zodSchema: computersZodSchema,
   outputZodSchema: computersOutputZodSchema,
   handler: handleComputersTool,
