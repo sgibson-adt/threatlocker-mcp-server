@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleMaintenanceModeTool, maintenanceModeZodSchema, maintenanceModeTool } from './maintenance-mode.js';
+import { z } from 'zod';
+import { handleMaintenanceModeTool, maintenanceModeZodSchema, maintenanceModeTool, maintenanceModeOutputZodSchema } from './maintenance-mode.js';
 import { ThreatLockerClient } from '../client.js';
 
 vi.mock('../client.js');
@@ -85,6 +86,26 @@ describe('maintenance_mode tool', () => {
     if (!result.success) {
       expect(result.error.code).toBe('BAD_REQUEST');
     }
+  });
+
+  // Regression: get_history output crashed because the schema declared `userName`,
+  // but the live API has no such field — the "who enabled it" field is `addedBy`.
+  it('output schema accepts a real maintenance history row (addedBy, no userName)', () => {
+    const schema = z.object(maintenanceModeOutputZodSchema as Record<string, z.ZodTypeAny>);
+    const realResponse = {
+      success: true,
+      data: [{
+        addedBy: 'jtreis@appliedmotionsystems.com',
+        endedBy: '',
+        displayName: 'Application Control Monitor Only',
+        maintenanceTypeId: 1,
+        startDateTime: '2026-03-11T20:13:22Z',
+        endDateTime: '2026-03-11T21:13:15Z',
+        maintenanceModeId: '13413c37-4314-44c2-8eeb-c7dd0e839524',
+        notes: null,
+      }],
+    };
+    expect(schema.safeParse(realResponse).success).toBe(true);
   });
 
   it('calls correct endpoint for get_history action', async () => {

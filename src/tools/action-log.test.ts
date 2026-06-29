@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleActionLogTool, actionLogZodSchema, actionLogTool } from './action-log.js';
+import { z } from 'zod';
+import { handleActionLogTool, actionLogZodSchema, actionLogTool, actionLogOutputZodSchema } from './action-log.js';
 import { ThreatLockerClient } from '../client.js';
 
 vi.mock('../client.js');
@@ -376,6 +377,30 @@ describe('action_log tool', () => {
       'ActionLog/ActionLogGetAllForFileHistoryV2',
       expect.objectContaining({ fullPath: 'C:\\test.exe', hostname: 'WS-01', pageNumber: '2', pageSize: '50' })
     );
+  });
+
+  // Regression: live API returns null for action/hash/policyName on some rows
+  // (e.g. grouped or non-application events). The output schema must tolerate it.
+  it('output schema accepts rows with null action/hash/policyName', () => {
+    const schema = z.object(actionLogOutputZodSchema as Record<string, z.ZodTypeAny>);
+    const realResponse = {
+      success: true,
+      data: [{
+        actionLogId: 12345,
+        eActionLogId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        fullPath: 'C:\\\\Windows\\\\system32\\\\svchost.exe',
+        processPath: null,
+        hostname: 'WS-01',
+        username: 'AMS\\\\JTREIS',
+        actionType: 'read',
+        actionId: 2,
+        action: null,
+        policyName: null,
+        dateTime: '2026-06-28T12:00:00Z',
+        hash: null,
+      }],
+    };
+    expect(schema.safeParse(realResponse).success).toBe(true);
   });
 
   it('passes through client error for search action', async () => {

@@ -32,7 +32,7 @@ export const threatlockerVersionsOutputZodSchema = {
     isEnabled: z.boolean().describe('Whether this version is installable'),
     dateTime: z.string().describe('When version was added to portal'),
     isDefault: z.boolean().describe('Default version for new computer groups'),
-    OSTypes: z.number().describe('Operating system type identifier (response key is "OSTypes")'),
+    osType: z.number().describe('Operating system type identifier: 1=Windows, 2=Mac, 3=Linux (live response key is "osType", despite some docs saying "OSTypes")'),
   }).passthrough()).optional().describe('list: array of agent versions'),
   pagination: paginationOutputSchema.optional(),
   error: errorOutputSchema.optional(),

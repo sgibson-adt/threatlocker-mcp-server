@@ -94,9 +94,11 @@ export const maintenanceModeZodSchema = {
 const maintenanceModeObject = z.object({
   maintenanceModeId: z.string(),
   maintenanceTypeId: z.number().describe('1=ApplicationControlMonitorOnly, 2=ApplicationControlInstallationMode, 3=Learning, 4=Elevation, 6=TamperProtectionDisabled, 14=Isolation, 15=Lockdown, 16=DisableOpsAlerts, 17=NetworkControlMonitorOnly, 18=StorageControlMonitorOnly, 19=InstallationLegacy — see threatlocker://enums resource'),
-  startDateTime: z.string(),
-  endDateTime: z.string(),
-  userName: z.string(),
+  displayName: z.string().nullable().describe('Human-readable maintenance mode name'),
+  startDateTime: z.string().nullable(),
+  endDateTime: z.string().nullable(),
+  addedBy: z.string().nullable().describe('Who enabled the maintenance window'),
+  endedBy: z.string().nullable().describe('Who ended it early (empty if it ran to completion)'),
 }).passthrough();
 
 export const maintenanceModeOutputZodSchema = {
@@ -130,7 +132,7 @@ Pitfalls:
 
 Permissions: Edit Computers, Manage Application Control Installation Mode, Manage Application Control Learning Mode.
 Pagination: get_history is paginated (use fetchAllPages=true to auto-fetch all pages).
-Key response fields: maintenanceModeId, maintenanceTypeId, startDateTime, endDateTime, userName.
+Key response fields: maintenanceModeId, maintenanceTypeId, displayName, startDateTime, endDateTime, addedBy, endedBy.
 
 Related tools: computers (get computer IDs, see current mode), computer_groups (group-level modes)`,
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },

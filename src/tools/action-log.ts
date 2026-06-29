@@ -170,16 +170,18 @@ export const actionLogZodSchema = {
 const actionLogObject = z.object({
   actionLogId: z.number(),
   eActionLogId: z.string(),
-  fullPath: z.string(),
+  // Many string fields come back null for grouped results or non-application
+  // events (network/registry/etc.), so they are declared nullable to match reality.
+  fullPath: z.string().nullable(),
   processPath: z.string().nullable(),
-  hostname: z.string(),
-  username: z.string(),
-  actionType: z.string(),
+  hostname: z.string().nullable(),
+  username: z.string().nullable(),
+  actionType: z.string().nullable(),
   actionId: z.number(),
-  action: z.string(),
-  policyName: z.string(),
-  dateTime: z.string(),
-  hash: z.string(),
+  action: z.string().nullable(),
+  policyName: z.string().nullable(),
+  dateTime: z.string().nullable(),
+  hash: z.string().nullable(),
 }).passthrough();
 
 export const actionLogOutputZodSchema = {

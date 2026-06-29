@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleSystemAuditTool, systemAuditZodSchema, systemAuditTool } from './system-audit.js';
+import { z } from 'zod';
+import { handleSystemAuditTool, systemAuditZodSchema, systemAuditTool, systemAuditOutputZodSchema } from './system-audit.js';
 import { ThreatLockerClient } from '../client.js';
 
 vi.mock('../client.js');
@@ -70,6 +71,26 @@ describe('system_audit tool', () => {
     const body = vi.mocked(mockClient.post).mock.calls[0][1] as Record<string, unknown>;
     expect(body.emailAddress).toBe('admin@company.com');
     expect(body).not.toHaveProperty('username');
+  });
+
+  // Regression: live API returns null systemAuditId (and other string fields) on
+  // some rows; the output schema must tolerate it instead of crashing the tool.
+  it('output schema accepts a row with null systemAuditId', () => {
+    const schema = z.object(systemAuditOutputZodSchema as Record<string, z.ZodTypeAny>);
+    const realResponse = {
+      success: true,
+      data: [{
+        systemAuditId: null,
+        emailAddress: 'admin@company.com',
+        action: 'Logon',
+        effectiveAction: 'Permitted',
+        details: {},
+        ipAddress: '10.0.0.1',
+        dateTime: '2026-06-28T00:00:00Z',
+        organizationId: 'bd7b5c5b-09ba-4e22-974c-ae77a8225672',
+      }],
+    };
+    expect(schema.safeParse(realResponse).success).toBe(true);
   });
 
   it('returns error for invalid date format in search', async () => {
